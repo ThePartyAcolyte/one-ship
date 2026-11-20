@@ -1,160 +1,132 @@
 # ONE-SHIP
 
-A personal agentic IDE for Arch Linux (Omarchy). Rust daemon, Tauri window, agents as the crew.
+A multidisciplinary maker's workstation and autonomous agent control center for Linux. Rust daemon, Tauri window, headless agents as the crew.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/Rust-2021-orange.svg?logo=rust)](src-tauri/Cargo.toml)
 [![Tauri](https://img.shields.io/badge/Tauri-v2-24C8D8.svg?logo=tauri)](src-tauri/)
 [![Vue](https://img.shields.io/badge/Vue-3-4FC08D.svg?logo=vuedotjs)](package.json)
-[![OpenDictate](https://img.shields.io/badge/Voice-OpenDictate_D--Bus-blueviolet.svg)](https://github.com/ThePartyAcolyte/opendictate)
+[![Specs](https://img.shields.io/badge/Docs-41_Living_Specs-1f6feb.svg)](docs/specs/README.md)
 
 ## Why ONE-SHIP
 
-In *The Expanse*, the Belters say a ship is one body: the hull, the crew,
-everything aboard. A station is one ship too, and so, if you zoom out far
-enough, is humanity.
+In *The Expanse*, the Belters say a ship is one body: the hull, the crew, everything aboard. A station is one ship too, and so, if you zoom out far enough, is humanity.
 
-I borrowed that idea for a smaller problem. The tools we use to work with LLMs feel broken to me. The craftsmen hand-write every line and refuse to let go. The swarm people launch a thousand agents, burn tokens, and hope. 
+I borrowed that idea for a smaller problem. The tools we use to work with LLMs feel broken to me. The craftsmen hand-write every line and refuse to let go. The swarm people launch a thousand agents, burn tokens, and hope.
 
-I wanted a third way: not typing the `for` loop, but still in command. A
-captain, not a gambler.
+I wanted a third way: not typing the `for` loop, but still in command. A captain, not a gambler.
 
-A terminal is a flood of text. An IDE is a thousand tools built for writing
-code by hand. ONE-SHIP is neither. The runner (`agy`, `claude`, `opencode`)
-is still the harness, and ONE-SHIP is the control panel around it, with no
-noise. A spaceship has no jacuzzi, only what is vital for the trip. That is
-the bar: what is vital to survive a project, from my very personal point of
-view.
+A terminal is a flood of text. An IDE is a thousand tools built for writing code by hand. ONE-SHIP is neither. The runner (`agy`, `claude`, `opencode`) is still the harness, and ONE-SHIP is the control panel around it, with no noise. A spaceship has no jacuzzi, only what is vital for the trip. That is the bar: what is vital to survive a project, from my very personal point of view.
 
-The goal is to talk to the crew instead of clicking: soldering a board,
-probe in hand, saying "this pin looks wrong" and having the agent act on it.
-We're not there yet. Agents are still too terse in chat. But that's the
-direction.
-
-It's a personal tool, built for my machine. This repo is a record of how I
-work.
+The goal is to talk to the crew instead of clicking: soldering a board, probe in hand, saying "this pin looks wrong" and having the agent act on it. We are building toward that voice-first workflow through the global voice controller and hardware digests, while keeping deterministic control over every process, token, and file.
 
 ## What it replaces
 
-The terminal workflow around agent CLIs: one pane per agent, one pane per
-dev server, a multiplexer to keep them alive, and a lot of scrolling. In
-ONE-SHIP a Rust daemon owns every process, and the window is only a view:
-close it and the agents and services keep running.
+The terminal workflow around agent CLIs: one pane per agent, one pane per dev server, a multiplexer to keep them alive, and a lot of scrolling. In ONE-SHIP a persistent Rust daemon (`oneship-daemon`) owns every process and database, and the Tauri window is only a view: close or hide it and the agents and services keep running.
 
 It does not replace Gemini on the web or the Claude desktop app.
 
 ## Working inside it
 
-1. **Add a project.** An existing one gets a read-only reconnaissance by an
-   initializer agent, which writes its `rula.toml` and raises flags for
-   what is missing (docs, todos, tech debt, profiler). A new one starts as a
-   conversation about what to build, spec first.
-2. **Talk to the crew.** Each agent has one continuous thread per project.
-   Its spoken answer stays in the chat, and the technical payload (code,
-   diffs, plans) goes to an artifact beside it.
-3. **Delegate and approve.** Agents hand tasks to each other through the
-   daemon's MCP server and ask for approval before anything privileged.
-4. **Stay safe.** Every agent session is snapshotted on hidden git refs, so
-   any file can be rolled back without touching the project history.
-5. **Remember.** Each conversation ends in minutes (decisions, files,
-   debt) stored in a database, searchable by meaning with a local vector
-   index.
+1. **Add or bootstrap a project.** Existing repositories receive read-only reconnaissance from an initializer agent that generates `rula.toml` and raises initialization flags (`docs`, `todos`, `tech_debt`, `profiler`). Greenfield projects start as a spec-first conversation that scaffolds foundational docs and `rula.toml` before any implementation code.
+2. **Talk to the crew across continuous threads.** Threads, Conversations, and runner Native Sessions are tracked separately in SQLite. Switching runners or compacting context carries a structured Brief forward; spoken summaries go to the chat overlay while technical payloads (plans, specs, code) land in side-by-side artifacts.
+3. **Control everything by voice or UI.** Use local push-to-focus dictation (**OpenDictate** over D-Bus) inside chat inputs, or press Push-to-Talk to invoke the **Global Voice Controller** ("Ship Brain") backed by Gemini Live, PipeWire audio, and the **Unified Capability Core** (`capability_discover` / `capability_execute`) across all project domains regardless of which tab is active.
+4. **Delegate, approve, and rotate quota.** Agents delegate tasks through the daemon's PID-attested HTTP MCP bus and block on explicit user approval for privileged actions (GitHub/GitLab draft PRs, deletions, migrations). Multi-account management (`google`, `deepseek`, `claude`) encrypts tokens with AES-256-GCM and rotates model pools when quotas tighten.
+5. **Stay safe with hidden snapshots.** Every agent turn and milestone can be snapshotted onto domain-scoped hidden Git refs (`refs/one-ship/snapshots/`) for per-file diffing and rollback without polluting commit history.
+6. **Remember everything in a causal graph.** Each session closes with structured minutes (`agent_session_journal`), tasks, and technical debt in SQLite, indexed alongside Tree-sitter code symbols, Markdown specs, and Git history in a local **LanceDB + BGE-M3** vector store and `knowledge_edges` graph.
 
-Services and tasks declared in `rula.toml` run under the same supervisor,
-and every run is profiled continuously.
+## Core Subsystems
+
+Based on the [41 living specifications](docs/specs/README.md):
+
+- **Autonomous Agent Runtime & MCP Bus:** Headless multi-turn supervision (`agy`, `claude` over `stream-json`; `opencode` with DeepSeek over ACP) with process-group isolation, boot-time adoption, on-demand skill symlinking (`.agents/skills/`), deterministic `64×96` pixel-portrait DNA, and a 59-tool HTTP MCP server attested via Linux `/proc`.
+- **Voice & Unified Capability Core:** Two decoupled layers — local speech-to-text streaming via [OpenDictate](https://github.com/ThePartyAcolyte/opendictate) (`org.kirulab.OpenDictate`), and the global Gemini Live conversational orchestrator wired to a navigation-agnostic `CapabilityProvider` registry and persistent voice sessions with a 65K TPM budget guard.
+- **Projects, Git & Forge Collaboration:** 4-level cascading configuration (`rula.toml` ↔ `~/.config/one-ship/config.toml`), supervised persistent services and one-shot tasks with port-conflict release, cyclic logging, dual-signification Git workspace, provider-neutral Forge workflows (GitHub via `gh`, GitLab via `glab`, persistent triage inbox, `Fork ↔ Upstream` flow), opt-in Kanban/Schedule/Gantt/Milestones, and a sandboxed CodeMirror 6 explorer with inline document comments.
+- **Observability & Continuous Profiling:** Every supervised service and task run is sampled continuously into **DuckDB** (`CPU %`, tree `RSS`, threads, disk I/O) and can wrap profiler engines (`samply`, `py-spy`, `v8prof`) via declarative `manifest.toml` plugins.
+- **Multidisciplinary Hardware, Design, CAD/PCB & RE Lab:**
+  - *Electronics:* Native USB drivers via `rusb` (**Owon VDS1022** oscilloscope) and **FX2LP / `sigrok-cli`** logic analyzer, hardware lock arbitration, PlatformIO / `probe-rs` flashing, and udev rules (`packaging/udev/99-oneship-instruments.rules`); EDA schematic ingestion and headless `ngspice` simulation remain on the roadmap.
+  - *Design, CAD & PCB:* Bridges and MCP gateways for **One-Ship Designer** (`desigma` fork, `/mcp/desigma`), **PCBCraft** (`/mcp/pcbcraft`), and **SolidCraft** (prebuilt 3D CAD binary integration).
+  - *RE Lab:* Supervised `rea` HTTP engine with a multi-project FIFO heavy-job queue (`/mcp/rea`) for binary, ASAR, and firmware analysis.
+- **OS-Adaptive Linux Desktop & Host Gating:** `get_host_capabilities` probes installed runners, optional companion tools, `gdbus`, clipboard backend (`wl-paste` on Wayland, `xclip` on X11), package manager (`pacman`, `apt-get`, `dnf`, `zypper`), and desktop session. Optional workspace tabs and runner entries hide dynamically when their host tools are absent.
 
 ## Workspace & Sections
 
-The workspace is organized into functional tabs built for focused engineering:
+The workspace adapts dynamically to enabled `rula.toml` plugins and `HostCapabilities`, exposing up to 16 top-level views plus the agent overlay:
 
-- **Overview:** Project vitals, git remote connectivity, feature activation toggles, and pending initialization badges.
-- **Explorer:** File tree and CodeMirror 6 editor with syntax highlighting, inline document comments, and clipboard image pasting.
-- **Journal:** Project memory center tracking chronological session minutes, the architectural decisions graph, actionable tasks (`project_todos`), and recorded technical debt (`project_technical_debt`).
-- **Git & Snapshots:** Commit graph and safety net: automatic hidden git refs (`refs/one-ship/snapshots/`) with point-in-time diffs and granular per-file restores without altering official commit history.
-- **Scripts:** Process grid supervising persistent daemons and transient build/test tasks declared in `rula.toml`, featuring automatic port conflict detection and live terminal buffers.
-- **Profiling:** Continuous process tree telemetry sampling (CPU %, peak RSS memory, disk I/O, threads) stored in DuckDB for every run.
-- **Skills:** Marketplace discovery and catalog of platform skills injected on-demand into agent contexts.
-- **Preview:** Embedded responsive dev-server viewport for web frontends configured via `[preview]` in `rula.toml`.
-- **RE Lab:** Reverse engineering gateway powered by REA (`morluto/rea`) for ELF binaries, Electron ASAR unpacking, and Ghidra headless decompilation.
-- **Electronics:** Hardware instrumentation center featuring virtual oscilloscope knobs, logic analyzer waveforms, and MCU serial consoles.
-- **Floating Chat Overlay:** Three-column brutalist agent hub: contact list with real-time lifecycle states, continuous conversation stream, and side-by-side technical artifact reader.
-
-## Extensible Hardware Instrumentation Workbench
-
-Modern software engineering frequently meets embedded hardware. Rather than coupling to proprietary vendor utilities, ONE-SHIP implements an extensible **hardware abstraction layer (`HardwareInstrument` trait)** designed to support any digital USB instrument via native driver plugins:
-
-- **Digital Oscilloscopes:** Real-time waveform acquisition frames, timebase prescalers, hardware gain PGA, attenuation relays, and trigger levels (initial driver implemented for the Owon VDS1022 via native asynchronous USB `rusb`).
-- **Logic Analyzers:** Multi-channel digital capture and protocol decoding (24MHz 8-channel fx2lafw / sigrok integration) for inspecting I2C, SPI, and UART bus transactions.
-- **Microcontroller Toolchains:** System serial detection (`/dev/ttyUSB*`), PlatformIO Core compilation/uploading, and `probe-rs` flashing.
-- **The Dual-Actor Paradigm:** While the human engineer uses a tactile virtual instrument UI with interactive canvas HUD cursors, autonomous AI agents receive token-efficient **Hardware Digests** ($V_{pp}$, $V_{rms}$, frequency, decoded packets, pinout tables) via strongly-typed MCP tools. This enables hands-free circuit debugging while probing or soldering.
-
-## Voice Dictation: OpenDictate Integration
-
-ONE-SHIP integrates natively with [**OpenDictate**](https://github.com/ThePartyAcolyte/opendictate), an omnipresent, privacy-first local voice dictation daemon for Linux:
-
-- **D-Bus Session Bus:** Communicates over Freedesktop D-Bus (`org.kirulab.OpenDictate`).
-- **Click-to-Reserve:** Focusing or clicking the agent chat input reserves a dictation session; blurring before speaking cancels cleanly.
-- **Real-Time Streaming:** Transcriptions inferred locally via `faster-whisper` stream incrementally into the input field in real time.
-- **Local & Private:** Voice audio stays 100% on-device, allowing natural spoken interaction with agents without cloud latency or leakage.
+- **Overview:** 4-column plugin-driven dashboard (project vitals, Git/upstream metrics, active agents, tasks, profiling, and pending `[! INIT]` flags).
+- **Explorer:** Sandboxed file tree and CodeMirror 6 editor with inline review comments, clipboard image paste (Wayland/X11), and multi-tier artifact views.
+- **Journal:** Session minutes timeline (`agent_session_journal`), actionable to-dos, and technical debt tracking.
+- **Project:** Opt-in multidisciplinary planning (`Tasks`: Kanban Board, Schedule, Gantt, Milestones) and `Forge` (Issues, PRs/MRs, Releases, persistent Inbox/Triage).
+- **Git & Snapshots:** Commit graph, working-tree diffs, AI-assisted commit messages, branch selector, custom VCS presets, and domain-scoped hidden snapshots.
+- **Scripts:** Supervised persistent services, one-shot tasks, and shells with live rolling output and port-conflict guards.
+- **Profiling:** Run-bound DuckDB process-tree metrics, run comparison (`DIFF`), and flamegraph artifact launch.
+- **Skills:** Project-scoped skill catalog and JIT toggling between `.agents/skills/` and `.agents/.skills-disabled/`.
+- **Graph:** Knowledge graph explorer and transversal semantic search (`Ctrl + K` Omnisearch).
+- **Preview:** Embedded dev-server viewport for web frontends configured under `[preview]`.
+- **RE Lab / Electronics / Design / CAD / PCB:** Domain workbenches gated by host tool availability and `rula.toml` plugin flags.
+- **Settings:** Per-project `rula.toml` editor with external-change watcher, unsaved-change guard, and tab visibility controls (alongside the global Settings & Integrations modal).
+- **Agent Taskbar & Floating Chat Overlay:** Bottom taskbar with portrait DNA, real-time status/quota gauges, and a docked or floating three-column chat + artifact + approval drawer.
 
 ## Architecture
 
 ```
-  Window (Tauri + Vue)          Agents (agy, claude, opencode)
-        │  events / RPC                  │  MCP (HTTP, PID-attested)
-        ▼                                ▼
-  ┌──────────────────────────────────────────────────────────┐
-  │                 oneship-daemon (Rust, Axum)              │
-  │   process supervisor  ·  MCP server  ·  watchers         │
-  │   snapshots  ·  profiler  ·  accounts  ·  hardware HAL   │
-  └─────────────┬─────────────────┬─────────────────┬────────┘
-                │                 │                 │
-                ▼                 ▼                 ▼
-             SQLite            DuckDB            LanceDB
-        (state, minutes)     (profiling)    (semantic search)
-                ▲
-                │ D-Bus Session Bus
-        ┌───────┴────────┐
-        │  OpenDictate   │ (Local voice STT)
-        └────────────────┘
+  Window (Tauri + Vue)             Headless Agents (agy, claude, opencode)
+        │  /api/v1/call/* (RPC)            │  /mcp, /mcp/rea,
+        │  /api/events (SSE)               │  /mcp/desigma, /mcp/pcbcraft
+        ▼                                  ▼  (HTTP, Linux /proc PID-attested)
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │                       oneship-daemon (Rust, Tokio, Axum :8765)          │
+  │  Process Supervisor · UI State Machine · Unified Capability Core        │
+  │  Kopeng Plugins · Git/Snapshots · Multi-Account · Hardware USB/Serial   │
+  │  Global Voice Controller (Gemini Live + PipeWire pw-record / pw-play)   │
+  └──────────────┬────────────────────────┬────────────────────────┬────────┘
+                 │                        │                        │
+                 ▼                        ▼                        ▼
+              SQLite                   DuckDB                   LanceDB
+      (state, minutes, FTS5,     (continuous tree      (BGE-M3 INT8 embeddings +
+       knowledge_edges, logs)     profiling samples)    Tree-sitter RAG chunks)
+                 ▲
+                 │ Freedesktop D-Bus (org.kirulab.OpenDictate)
+        ┌────────┴────────┐
+        │   OpenDictate   │ (Optional local speech-to-text dictation)
+        └─────────────────┘
 ```
-
-The daemon is the only owner of processes and state. Agents run headless
-over `stream-json` or ACP, never through a terminal emulator.
 
 ## Stack
 
 | Layer | Technology |
 | :--- | :--- |
-| Daemon | Rust, Tokio, Axum, `thiserror`, `ts-rs`, `rusb`, `serialport` |
-| Storage | SQLite (WAL), DuckDB, LanceDB with local BGE-M3 embeddings |
-| Agents | `agy`, `claude`, `opencode` over `stream-json` / ACP, MCP |
-| Voice Bus | Freedesktop D-Bus session bus with OpenDictate (`faster-whisper`) |
-| Window | Tauri v2, Vue 3, TypeScript, Pinia, Tailwind CSS, CodeMirror 6 |
-| Host | Arch Linux (Omarchy), Hyprland (Wayland), systemd user units |
+| Daemon | Rust, Tokio, Axum (`:8765`), `thiserror`, `ts-rs`, `rusb`, `serialport` |
+| Storage | SQLite (WAL + FTS5), DuckDB, LanceDB + local `BGE-M3` INT8 ONNX (`fastembed` / `ort`) + Tree-sitter |
+| Agents | `agy`, `claude` (`stream-json`), `opencode` + DeepSeek (ACP), Streamable HTTP MCP |
+| Voice | PipeWire (`pw-record`/`pw-play`) + Gemini Live ("Ship Brain"); optional OpenDictate over D-Bus |
+| Window | Tauri v2, Vue 3, TypeScript, Pinia, Tailwind CSS, CodeMirror 6, AppIndicator/SNI tray |
+| Host Targets | Linux workstations: Arch / Omarchy (Hyprland), Ubuntu (GNOME), Fedora Workstation, Linux Mint (Cinnamon) |
 
-## How it is developed
+## Installation & Running
 
-ONE-SHIP is built with the same kind of agents it orchestrates, under a
-strict contract in [`AGENTS.md`](AGENTS.md):
+### Non-Dev Linux Installation (`./install.sh`)
 
-- **Proposal first.** Nothing is created, changed or deleted before a
-  written proposal is approved.
-- **Specs are alive.** Each subsystem has a spec in [`docs/specs/`](docs/specs/),
-  updated in the same change as the code.
-- **One change, every layer.** Backend, frontend, prompts and specs move
-  together.
-- **Fail loudly.** No silent fallbacks, no dead code, no backward
-  compatibility.
-- **The developer runs the app.** Agents edit, build and check. I start
-  and stop the processes.
-- **A devlog per session**, in [`devlog/`](devlog/).
+ONE-SHIP includes an interactive multi-distro installer ([`install.sh`](install.sh)) designed to build and install production (non-dev) co-located binaries (`one-ship`, `oneship-daemon`, `one-ship-launch`), `templates/`, `.desktop` entry, `hicolor` icons, and `systemd --user` service (`oneship-daemon.service`) under `~/.local` (or `--prefix <dir>`).
 
-## Run it & Installation
+**1. Prerequisites on a fresh Linux machine (`git`, `curl`, and Rust via `rustup`):**
 
-### Quick Linux Install (`./install.sh`)
+```bash
+# Ubuntu / Linux Mint / Debian:
+sudo apt update && sudo apt install -y git curl
 
-ONE-SHIP provides an interactive multi-distro installer wizard supporting Arch/Omarchy (`pacman`), Ubuntu/Debian (`apt-get`), Fedora (`dnf`), and openSUSE (`zypper`):
+# Fedora Workstation:
+# sudo dnf install -y git curl
+
+# Arch / Omarchy:
+# sudo pacman -S --needed git curl
+
+# Install modern Rust toolchain:
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+source "$HOME/.cargo/env"
+```
+
+**2. Clone and run the installer wizard:**
 
 ```bash
 git clone https://github.com/ThePartyAcolyte/one-ship.git
@@ -162,11 +134,44 @@ cd one-ship
 ./install.sh
 ```
 
-The wizard lets you choose core IDE + daemon installation alongside optional integrations (*RE Lab*, *Electronics + USB udev rules*, *DE-SIGMA*, *PCBCraft*, *SolidCraft binary check*, *OpenDictate*, and the *Omarchy Top Bar Widget*). Automated flags (`--profile minimal|standard|full`, `--features ...`, `--dry-run`, `--uninstall`) are documented via `./install.sh --help`. Missing integrations remain dynamically hidden inside the UI via `get_host_capabilities`.
+**3. First-run setup:**
+
+- Install at least one supported AI CLI runner (`claude`, `opencode`, or `agy`) before launching autonomous agents.
+- Launch **ONE-SHIP** from your desktop app launcher (or `one-ship-launch`). If workspace prerequisites (projects directory, Git identity, `gh`, or CLI runners) are missing, the built-in **Setup & Readiness** checklist opens automatically to guide you.
+
+Useful flags:
+
+```bash
+./install.sh --profile minimal   # Core IDE + daemon + systemd unit + desktop entry
+./install.sh --profile standard  # Core + RE Lab + Electronics (+udev) + Voice + Omarchy widget
+./install.sh --profile full      # Standard + DE-SIGMA + PCBCraft + SolidCraft binary lookup
+./install.sh --dry-run           # Print planned actions without modifying the system
+./install.sh --uninstall         # Remove installed binaries, service, desktop entry, and templates
+```
+
+#### Multi-Distro Testing Matrix & Desktop Adaptation
+
+The non-dev installer and desktop runtime are built for **Arch / Omarchy** and targeted at three primary non-dev test OSes:
+
+| Target OS | Package Manager | Window & Tray Behavior | Current Test Status |
+| :--- | :--- | :--- | :--- |
+| **Ubuntu (GNOME)** | `apt-get` | Floating DE mode (CSD header controls, 8-edge resize, AppIndicator/SNI tray) | **Active testing in progress** |
+| **Fedora Workstation** | `dnf` | Floating DE mode (CSD header controls, 8-edge resize, AppIndicator/SNI tray) | Planned / verification pending |
+| **Linux Mint (Cinnamon)** | `apt-get` | Floating DE mode (CSD header controls, 8-edge resize, AppIndicator/SNI tray) | Planned / verification pending |
+| **Arch / Omarchy (Hyprland)** | `pacman` | Frameless tiled mode + unified `integrations/omarchy-bar/` widget | Primary development host |
+
+Recent Ubuntu and floating-desktop adaptations built into the installer and launcher include:
+- **Ubuntu/Debian (`apt-get`) toolchain dependencies:** installs `libwebkit2gtk-4.1-dev`, `libayatana-appindicator3-dev` (tray support on GNOME/Cinnamon), `protobuf-compiler` (required by `lance-encoding`), `libudev-dev`, `libusb-1.0-0-dev`, `libxdo-dev`, `librsvg2-dev`, and `libssl-dev`.
+- **Floating-desktop window & tray lifecycle (`!is_hyprland_session()`):** outside Hyprland, `one-ship` mounts draggable header controls (Minimize / Maximize / Close), 8-direction `4px` edge resize handles (`startResizeDragging`), and a native System Tray icon (`one-ship-tray`) so closing the window hides to the tray while `oneship-daemon.service` stays alive (use tray **Quit (Stop Daemon)** to stop both).
+- **Detached production launcher (`one-ship-launch`):** ensures `oneship-daemon.service` is active, detaches the GUI via `setsid` (logs in `$XDG_STATE_HOME/one-ship/launcher.log`, or pass `--foreground`), and retries once with `WEBKIT_DMABUF_RENDERER_FORCE_SHM=1` if WebKitGTK exits abnormally within 5 seconds.
+- **Session portability:** Wayland (`wl-paste`) and X11 (`xclip`) clipboard image paste, fallback detection for standard terminals (`gnome-terminal`, `konsole`, `xfce4-terminal`, `x-terminal-emulator`, `xterm`), and graceful OpenDictate decoupling when D-Bus dictation is absent.
+
+> [!NOTE]
+> Sandboxed Flatpak and Snap packages are intentionally unsupported because the daemon relies on direct Linux `/proc/<pid>` caller attestation, `systemd --user` units, USB/serial device nodes, and host agent CLIs.
 
 ### Development Launcher (`scripts/run_dev.sh`)
 
-Components run as transient systemd user units without cluttered terminal windows:
+For contributors working from source, components run as transient `systemd --user` units (`oneship-dev-*`):
 
 ```bash
 scripts/run_dev.sh              # Start/rebuild daemon, watcher, Vite, and window
@@ -177,14 +182,9 @@ scripts/run_dev.sh logs daemon  # Follow unit journal (daemon|build|watch|vite|g
 scripts/run_dev.sh stop all     # Terminate daemon, watchers, and supervised child processes
 ```
 
-The daemon rebuilds automatically on `src-tauri` changes when `watchexec` is installed.
-
 ### Omarchy Top Bar Widget
 
-ONE-SHIP provides an auto-adaptive Quickshell bar widget (`integrations/omarchy-bar/`, plugin ID `tech.kirulab.one-ship`) for the Omarchy desktop:
-- **Live Telemetry (Always Active):** Reads `$XDG_RUNTIME_DIR/oneship-status.json` to display active/working/idle agent counts, pending approvals, and running services.
-- **Production Mode:** Manages `oneship-daemon.service` via `systemctl --user` and launches/focuses `one-ship-launch` / `one-ship`.
-- **Automatic Development Mode:** When symlinked from a source checkout with active `oneship-dev-*` units (or without `oneship-daemon.service`), automatically exposes `scripts/run_dev.sh` Cargo build progress, `watchexec` watcher, Vite, and unit journal logs.
+On Omarchy desktops, `integrations/omarchy-bar/` (`tech.kirulab.one-ship`) reads `$XDG_RUNTIME_DIR/oneship-status.json` and auto-switches between development units (`oneship-dev-*`) and production (`oneship-daemon.service` + `one-ship-launch`):
 
 ```bash
 ln -s "$PWD/integrations/omarchy-bar" ~/.config/omarchy/plugins/tech.kirulab.one-ship
@@ -193,21 +193,34 @@ omarchy plugin enable tech.kirulab.one-ship
 omarchy-restart-shell
 ```
 
-Left-click focuses or launches the interface; right-click opens the status and control popup.
+## How it is developed
+
+ONE-SHIP is developed under strict engineering governance in [`AGENTS.md`](AGENTS.md) and [`docs/DESIGN_RULES.md`](docs/DESIGN_RULES.md):
+
+- **Proposal first.** Every change requires an explicit technical proposal before editing files.
+- **Specs are alive.** Subsystem specifications in [`docs/specs/`](docs/specs/README.md) stay synchronized with code in the same cycle and record verified `Implementation Status` (`Implemented`, `Partial`, or `Roadmap`).
+- **One change, every layer.** Rust backend (`ts-rs` bindings via `scripts/run_dev.sh export-bindings`), TypeScript/Vue frontend, prompts/skills, and specs move together.
+- **Fail loudly.** Typed `thiserror` errors, explicit config validation, no silent fallbacks, and no dead code.
+- **Session devlogs.** Every work session is recorded in [`devlog/`](devlog/).
 
 ## Documentation
 
-The full architectural index is in [`docs/README.md`](docs/README.md). Key entry points:
-- [00. Manifesto](docs/00_manifesto.md)
-- [04. Dictation & NLP (OpenDictate)](docs/specs/04_dictation_and_nlp.md)
-- [08. Native Process Supervisor](docs/specs/08_native_process_supervisor.md)
-- [12. Streamable HTTP MCP Daemon](docs/specs/12_streamable_http_mcp_daemon.md)
-- [25. Universal Telemetry & Profiling](docs/specs/25_universal_telemetry_and_profiling_engine.md)
-- [30. Conversation & Context Continuity](docs/specs/30_agent_thread_conversation_and_context_continuity.md)
-- [31. Electronics & Instrumentation](docs/specs/31_electronics_workstation_and_instrumentation_engine.md)
+Start at [`docs/README.md`](docs/README.md) or browse the categorized specification tree in [`docs/specs/README.md`](docs/specs/README.md):
+
+| Area | Entry Point |
+| :--- | :--- |
+| Vision, Language & Stack | [Manifesto](docs/00_manifesto.md) · [Ubiquitous Language](docs/01_ubiquitous_language.md) · [Architecture Stack](docs/02_architecture_stack.md) |
+| Architecture & Packaging | [01-architecture/](docs/specs/01-architecture/README.md) (Kopeng, config cascade, skills, HTTP MCP, daemon RPC, migrations, Linux install) |
+| Agents & Continuity | [02-agents/](docs/specs/02-agents/README.md) (Supervisor, threads, chat overlay, multi-account, quota, snapshots, skills, portraits) |
+| Projects, Git & Forge | [03-projects/](docs/specs/03-projects/README.md) (Registry/scripts, Git cockpit, logging, remotes, Forge, inbox, milestones, artifacts, greenfield) |
+| Observability & Graph | [04-observability/](docs/specs/04-observability/README.md) (Session lifecycle, SQLite devlog, LanceDB/BGE-M3 graph, DuckDB profiler) |
+| Voice & Capability Core | [05-voice/](docs/specs/05-voice/README.md) (OpenDictate D-Bus, chat dictation, Gemini Live controller, Unified Capability Core) |
+| Hardware, CAD & RE | [06-hardware-and-cad/](docs/specs/06-hardware-and-cad/README.md) (Electronics/USB, One-Ship Designer, SolidCraft & PCBCraft, REA) |
+| UI & Design System | [07-ui/](docs/specs/07-ui/README.md) (Tokens, component library, chrome, daemon UI state machine, settings/overview, Lang Belta i18n) |
+| Legacy Mapping | [docs/legacy/MAPPING.md](docs/legacy/MAPPING.md) (Traceability from original 39 numbered specs) |
 
 ## Status & License
 
-Active pre-1.0 development (`0.2.x`); Linux workstation installation via [`install.sh`](install.sh). When it reaches 1.0 across major Linux distros, I'll come back to the parked idea of an interface in Belter creole.
+Active pre-1.0 development (`0.2.x`). Core daemon, agent supervision, session continuity, Forge/PM, semantic knowledge graph, global voice controller, and multi-distro Linux packaging are implemented, while non-dev installer verification across Ubuntu, Fedora Workstation, and Linux Mint — plus select hardware/CAD sub-stages (e.g., SPICE simulation, BOM sourcing) — remain in active testing or roadmap as tracked in [`TODO.md`](TODO.md) and each spec's `Implementation Status`. When `1.0` stabilizes across target Linux distros, I'll revisit the parked Lang Belta interface tier.
 
-Licensed under the [MIT License](LICENSE). Third-party fonts (OFL-1.1), assets, and dependencies maintain their respective open-source licenses.
+Licensed under the [MIT License](LICENSE). Third-party fonts (`OFL-1.1`), dependencies, and optional external sprite packs maintain their respective licenses.
