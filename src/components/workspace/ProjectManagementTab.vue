@@ -1314,7 +1314,7 @@ onUnmounted(() => {
               :group="{ name: 'kanban-tasks', pull: true, put: true }"
               :animation="150"
               ghost-class="opacity-50"
-              @add="(evt: { item?: HTMLElement }) => onTaskAddedToStage(stage.slug, evt)"
+              @add="(evt) => onTaskAddedToStage(stage.slug, evt)"
               class="flex-1 overflow-y-auto p-2 flex flex-col gap-2 min-h-[48px]"
             >
               <div
