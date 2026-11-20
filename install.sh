@@ -693,11 +693,11 @@ install_feature_rea() {
   if command -v rea >/dev/null 2>&1; then
     log_ok "REA binary already installed: $(command -v rea)"
   elif command -v npm >/dev/null 2>&1; then
-    if ask_yes_no "REA CLI ('rea') is missing. Install globally via 'npm install -g rea-agents@latest'?" "y"; then
-      run_cmd npm install -g rea-agents@latest
+    if ask_yes_no "REA CLI ('rea') is missing. Install into $PREFIX/bin via 'npm install -g --prefix $PREFIX rea-agents@latest'?" "y"; then
+      run_cmd npm install -g --prefix "$PREFIX" rea-agents@latest || log_warn "REA npm installation failed; install manually later."
     fi
   else
-    log_warn "npm unavailable; install REA manually with: npm install -g rea-agents@latest"
+    log_warn "npm unavailable; install REA manually with: npm install -g --prefix \"$PREFIX\" rea-agents@latest"
   fi
 }
 
