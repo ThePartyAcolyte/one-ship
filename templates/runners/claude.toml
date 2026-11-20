@@ -1,0 +1,36 @@
+# ONE-SHIP Agent Runner Specification
+# Runner: Claude Code CLI (Anthropic 5.5 Generation)
+# Version: 0.2.1
+
+id = "claude"
+name = "Claude Code CLI"
+binary = "claude"
+version = "0.2.1"
+# Lightest model, offered as the switch target when a heavier model runs out of quota.
+quota_fallback_model = "claude-sonnet-5-5"
+
+[flags]
+model = "--model"
+effort = "--effort"
+auto_approve = "--dangerously-skip-permissions"
+
+[[models]]
+id = "claude-opus-5-5"
+label = "Claude Opus 5.5"
+default_effort = "medium"
+effort_levels = ["low", "medium", "high", "xhigh", "max"]
+context_window_tokens_count = 1000000
+
+[[models]]
+id = "claude-sonnet-5-5"
+label = "Claude Sonnet 5.5"
+default_effort = "medium"
+effort_levels = ["low", "medium", "high", "xhigh", "max"]
+context_window_tokens_count = 1000000
+
+[[models]]
+id = "claude-fable-5-1"
+label = "Claude Fable 5.1"
+default_effort = "high"
+effort_levels = ["low", "medium", "high", "xhigh", "max"]
+context_window_tokens_count = 1000000

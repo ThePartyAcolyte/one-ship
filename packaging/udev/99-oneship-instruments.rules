@@ -1,0 +1,11 @@
+# ONE-SHIP USB Hardware Instrumentation Rules (Spec 31 / Spec 41)
+# Grant non-root logged-in workstation users access to supported USB instruments.
+
+# Owon VDS1022 / VDS1022I USB Oscilloscope (VID: 0x5345, PID: 0x1234)
+SUBSYSTEM=="usb", ATTR{idVendor}=="5345", ATTR{idProduct}=="1234", MODE="0666", TAG+="uaccess"
+
+# Saleae Logic / fx2lafw Logic Analyzer (VID: 0x0925, PID: 0x3881)
+SUBSYSTEM=="usb", ATTR{idVendor}=="0925", ATTR{idProduct}=="3881", MODE="0666", TAG+="uaccess"
+
+# Cypress EZ-USB FX2LP pre-renumeration loader (VID: 0x04b4, PID: 0x8613)
+SUBSYSTEM=="usb", ATTR{idVendor}=="04b4", ATTR{idProduct}=="8613", MODE="0666", TAG+="uaccess"

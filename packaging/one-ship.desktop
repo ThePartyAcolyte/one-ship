@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=ONE-SHIP
+Comment=Agentic IDE, Process Supervisor & Hardware Instrumentation Workbench
+Exec=one-ship-launch
+Icon=one-ship
+Terminal=false
+Categories=Development;IDE;Electronics;
+StartupWMClass=one-ship

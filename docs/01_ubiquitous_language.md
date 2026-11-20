@@ -1,0 +1,34 @@
+# Ubiquitous Language (DDD)
+
+*   **Hub:** The main GUI window. A multidisciplinary maker's cockpit and control dashboard to view and orchestrate global and per-project state.
+*   **Daemon (`oneship-daemon`):** The persistent Rust background process that acts as the sole owner of processes and databases, keeping services and agents alive, sampling telemetry, and emitting real-time state updates via **HTTP Server-Sent Events (SSE at `GET /api/events`)**.
+*   **Tracker Config (`rula.toml`):** The local project configuration file that defines a project's services, tasks, agent personas, and plugin parameters.
+*   **Service / Subprocess:** Any persistent daemon, dev server, or one-shot task launched and supervised by the Daemon.
+*   **Error Curator & Core Error:** The stderr filtering pipeline (`extract_semantic_errors` in `kopeng/errors.rs`) that strips terminal noise and isolates traceback windows (`Core Error`). *(Note: Automated background LLM error explanation is deferred under Spec 02).*
+*   **Kopeng:** The modular backend domain subsystem architecture in `src-tauri/src/kopeng/` that extends ONE-SHIP's capabilities (skills, VCS, accounts, profiler, electronics, CAD/PCB, design, reverse engineering, and project management).
+*   **Workspace:** The project's execution environment, owned by the daemon's native process supervisor (Spec 08), where agent personas, services, and tasks run as supervised child processes.
+*   **Agent Persona:** A named configuration (e.g., `bosmang`, `reverser`) in `rula.toml` defining a specific agent's role, directory boundaries, prompt, and runner/model pair.
+*   **Delegation Ledger:** The relational persistence table in SQLite (`oneship.db`) that tracks asynchronous tasks assigned between agents to ensure task closure.
+*   **Service (`svc:<id>`):** A long-running daemon or development server process declared in `rula.toml` under `[scripts.persistent.<id>]`, run by the native process supervisor under `<project_path>:svc:<id>`.
+*   **Task (`tsk:<id>`):** A transient, one-shot script or task execution runner declared under `[scripts.task.<id>]`, run by the native process supervisor under `<project_path>:tsk:<id>`.
+*   **Platform Skill:** A predefined capability or instruction set symlinked into `<project>/.agents/skills/` to give agents platform-specific and domain-specific abilities.
+*   **Hydration:** The pipeline (`hydration.rs`) that assembles a complete view of a project's state (`rula.toml`, Git status, active services, agent states, and enabled plugins).
+*   **MCP Bus:** The PID-attested HTTP/JSON-RPC server exposed by the daemon (`/mcp`, `/mcp/rea`, `/mcp/desigma`, `/mcp/pcbcraft`), acting as the primary API interface for autonomous agents.
+*   **Runner:** The headless CLI harness executable responsible for spawning and executing a project agent persona over `stream-json` or ACP. Strictly limited to the three runners installed and used on the host workstation:
+    *   `agy` (Antigravity CLI)
+    *   `claude` (Claude Code CLI)
+    *   `opencode` (OpenCode CLI, used specifically with **DeepSeek**)
+*   **Docstyle:** A standardized documentation and governance structure (`sdd`, `lean`, `contract`, `custom`) selected during Phase 2 or greenfield bootstrapping to guide living specifications.
+*   **Initialization Flag:** A relational record in SQLite `project_initialization_flags` tracking a project bootstrapping or operational gap (`docs`, `todos`, `tech_debt`, `profiler`, `invalid_config`, `removal`), surfaced on the Project Card as a brutalist indicator badge (`[! INIT: ...]`, `[! CONFIG]`, `[! REMOVAL]`).
+*   **Base Platform Skill:** A core operational skill (`oneship-core`, `oneship-delegation`, `oneship-devlog`, `oneship-snapshots`, `oneship-techdebt`, `oneship-artifacts`) symlinked into `<project>/.agents/skills/` during project pre-boot.
+*   **Specialized Skill:** A context-specific skill (such as `oneship-docstyles`, `oneship-profiler-crafter`, `oneship-rea`, `oneship-desigma`, `oneship-pcbcraft`, `oneship-project-mgmt`) symlinked on-demand when resolving an initialization flag or enabling a domain plugin.
+*   **Global System Agent / Voice Orchestrator (Planned Redesign):** The legacy project-style CLI chat `system` persona was retired on `2026-11-16`. It is planned to be reintroduced under a **new architecture**: a **direct-API Voice & Interface Orchestrator** (e.g., powered by **Gemini Live API** with native function calling rather than a CLI runner) operating globally at the interface level to inspect cross-project tasks and semantic RAG, control UI navigation (open projects/tabs), and draft or delegate work packages to project-scoped agents.
+*   **Project Initializer:** A transient agent persona executing strictly inside `<project_path>` under the native process supervisor during onboarding to perform non-invasive stack discovery (brownfield) or spec-first scoping (greenfield), generate `rula.toml`, record the Genesis Milestone, and raise initialization flags.
+*   **Thread:** The continuous, never-ending relationship with one agent persona in one project; what the user sees as "the chat" (like a contact in an address book). A Thread contains many Conversations in sequence. (Spec 30)
+*   **Conversation:** A bounded working cycle inside a Thread: it opens with a clean context, has a topic, and ends by resolution, closure or context clean. Persisted in `agent_conversations`. Never a runner-native identifier. (Spec 30)
+*   **Native Session:** The runner-level context of one process lifetime or resumable session (`agy` conversation id, OpenCode ACP session id, Claude Code session id). A Conversation owns an ordered list of Native Sessions; a new one begins whenever the runner changes or a session cannot be resumed. The bare word "session" means Native Session only. (Spec 30)
+*   **Brief:** The runner-neutral context package ONE-SHIP assembles to seed a new Native Session: agent-authored summary if present, last N turns, Minutes digest, files touched and debt recorded. Context, not a replay: tool state of the original session is not reconstructed. (Spec 30)
+*   **Minutes:** The structured record of a Conversation written by the agent (summary, decisions, files touched, technical debt, tags); stored in `agent_session_journal` and automatically vectorized into LanceDB. (Spec 22, Spec 30)
+*   **Persona Preamble:** The persona system prompt plus assigned skills, prepended to the first user message of a Native Session that has no history. Spawning an agent sends nothing to the model. (Spec 30)
+*   **Readiness Stub:** The synthetic `system` turn ("agent ready") inserted by ONE-SHIP when a Conversation opens. Never produced by a model. (Spec 30)
+*   **Resume / Reopen:** *Resume* re-attaches the same Native Session (same runner, session still valid). *Reopen* starts a new Native Session seeded with a Brief built from a past Conversation, on any runner. (Spec 30)

@@ -1,0 +1,17 @@
+[Unit]
+Description=ONE-SHIP Background Process Supervisor & MCP Daemon
+Documentation=https://github.com/ThePartyAcolyte/one-ship
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/oneship-daemon
+KillMode=mixed
+TimeoutStopSec=30
+Restart=on-failure
+RestartSec=3
+Environment=RUST_LOG=info
+
+[Install]
+WantedBy=graphical-session.target

@@ -1,0 +1,57 @@
+# ONE-SHIP Agent Runner Specification
+# Runner: Google Antigravity CLI (agy)
+# Version: 0.2.1
+
+id = "agy"
+name = "Google Antigravity CLI"
+binary = "agy"
+version = "0.2.1"
+# Lightest model, offered as the switch target when a heavier model runs out of quota.
+quota_fallback_model = "gemini-3.8-flash"
+
+[flags]
+model = "--model"
+effort = "--effort"
+auto_approve = "--dangerously-skip-permissions"
+accept_edits = "--mode accept-edits"
+
+[[models]]
+id = "gemini-4-argon"
+label = "Gemini 4 Argon"
+default_effort = "high"
+effort_levels = ["low", "medium", "high"]
+context_window_tokens_count = 1048576
+
+[[models]]
+id = "gemini-4-hydrogen"
+label = "Gemini 4 Hydrogen"
+default_effort = "high"
+effort_levels = ["low", "medium", "high", "xhigh"]
+context_window_tokens_count = 1048576
+
+[[models]]
+id = "gemini-3.8-flash"
+label = "Gemini 3.8 Flash"
+default_effort = "high"
+effort_levels = ["low", "medium", "high"]
+context_window_tokens_count = 1048576
+
+[[models]]
+id = "claude-opus-5-5"
+label = "Claude Opus 5.5"
+default_effort = "high"
+effort_levels = ["low", "medium", "high"]
+context_window_tokens_count = 1000000
+
+[[models]]
+id = "claude-sonnet-5-5"
+label = "Claude Sonnet 5.5"
+default_effort = "high"
+effort_levels = ["low", "medium", "high"]
+context_window_tokens_count = 1000000
+
+[[models]]
+id = "gpt-oss-120b-medium"
+label = "GPT-OSS 120B (Medium)"
+effort_levels = []
+context_window_tokens_count = 131072

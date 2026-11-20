@@ -1,0 +1,72 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies & Build Outputs
+node_modules
+dist
+dist-ssr
+*.local
+
+# Rust & Cargo
+/target
+**/target/
+**/*.rs.bk
+gen/schemas
+
+# Databases & Analytics Storage
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.duckdb
+*.duckdb.wal
+*.duckdb.tmp
+
+# Environment Variables & Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+
+# Runtime Sockets & PIDs
+*.sock
+*.pid
+
+# Temporary & Backup Files
+*.tmp
+*.bak
+*~
+*.orig
+*.sw?
+*.swp
+*.swo
+
+# OS & Desktop Metadata
+.DS_Store
+Thumbs.db
+.directory
+
+# Licensed Portrait Packs (user-supplied locally; procedural SVG fallback ships in code)
+extras/Pixel-Portraits-Free/
+extras/Pixel-Portraits-Addon/
+public/portraits/
+
+# Editor Directories and Files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln

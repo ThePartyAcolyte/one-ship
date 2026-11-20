@@ -1,0 +1,199 @@
+/* Shared brutalist visual language classes & color hierarchy.
+ * Only the four --ui-bg-* tokens are valid surfaces (Spec 13 §1.2).
+ * Legacy names (--surface-color, --card-bg, --bg-card, --text-color,
+ * --text-primary, --bg-primary, --status-warning-*) are prohibited:
+ * an undefined var() silently resolves backgrounds to transparent.
+ */
+
+:root {
+  color-scheme: dark;
+  --ui-bg-base: var(--bg-color);
+  --ui-bg-title: color-mix(in srgb, var(--bg-color) 78%, #000);
+  --ui-bg-list: color-mix(in srgb, var(--bg-color) 62%, #000);
+  --ui-bg-card: color-mix(in srgb, var(--bg-color) 90%, var(--fg-color) 5%);
+}
+
+.ui-surface-base {
+  background-color: var(--ui-bg-base);
+}
+
+.ui-surface-title {
+  background-color: var(--ui-bg-title);
+}
+
+.ui-surface-list {
+  background-color: var(--ui-bg-list);
+}
+
+.ui-surface-card {
+  background-color: var(--ui-bg-card);
+}
+
+.ui-search-box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--border-color);
+  background: var(--ui-bg-title);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.ui-search-box:focus-within {
+  border-color: var(--accent-color);
+}
+
+.ui-search-box__icon {
+  color: var(--accent-color);
+  flex-shrink: 0;
+}
+
+.ui-kbd {
+  font-family: var(--app-font-family), monospace;
+  font-size: 9px;
+  line-height: 1;
+  padding: 0.1875rem 0.375rem;
+  border: 1px solid var(--border-color);
+  color: var(--dim-color);
+  background: color-mix(in srgb, #000 40%, transparent);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.ui-filter-pill {
+  padding: 0.125rem 0.5rem;
+  border: 1px solid var(--border-color);
+  color: var(--dim-color);
+  background: transparent;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ui-filter-pill:hover {
+  color: var(--fg-color);
+  border-color: color-mix(in srgb, var(--fg-color) 40%, transparent);
+}
+
+.ui-filter-pill--active {
+  border-color: var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color) 12%, transparent);
+  color: var(--accent-color);
+}
+
+.ui-filter-pill--active:hover {
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.ui-icon-btn {
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 1px solid var(--border-color);
+  background: var(--ui-bg-base);
+  color: var(--dim-color);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.ui-icon-btn:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.ui-icon-btn--danger {
+  border-color: var(--status-error-border);
+  background: var(--status-error-bg);
+  color: var(--status-error-color);
+}
+
+.ui-icon-btn--danger:hover {
+  border-color: var(--status-error-color);
+  background: color-mix(in srgb, var(--status-error-color) 25%, transparent);
+  color: var(--status-error-color);
+}
+
+/* Standardized modal overlay: dimming scrim + full-screen backdrop blur.
+ *
+ * WebKit invariants (see Spec 13 §3.7 and Technical Debt #37):
+ * - `backdrop-filter` MUST use literal values. WebKit bug 289800 ignores custom
+ *   properties inside `backdrop-filter`, which makes every Tailwind v4
+ *   `backdrop-blur-*` utility (built from `var(--tw-backdrop-blur,)`) a no-op.
+ * - Blurred backdrop layers are bounded: one per open modal (expected nesting of
+ *   at most two) plus at most one blocking overlay per initializing project card.
+ *   WebKitGTK 2.54 leaks memory proportionally to the number of simultaneous
+ *   backdrop-filter layers (WebKit bug 328065), so never mount a blurred backdrop
+ *   per row, per HUD chip, or per repeated list item.
+ * - Never apply `filter: blur(...)` to the application DOM tree: it is a paint
+ *   filter that re-rasterizes the whole subtree on every invalidation.
+ */
+.ui-overlay-backdrop {
+  background-color: rgba(0, 0, 0, 0.45);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.ui-modal-footer {
+  padding: 0.5rem 1rem;
+  border-top: 1px solid var(--border-color);
+  background: var(--ui-bg-title);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--dim-color);
+  flex-shrink: 0;
+}
+
+/* Standardized brutalist square scrollbars (constant width, square, transparent track at rest -> accent-tinted track + accent thumb on hover/active) */
+::-webkit-scrollbar {
+  width: 6px !important;
+  height: 6px !important;
+  background: transparent !important;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0px !important;
+}
+
+::-webkit-scrollbar-track:hover,
+::-webkit-scrollbar-track:active {
+  background: color-mix(in srgb, var(--accent-color) 22%, transparent) !important;
+}
+
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--fg-color) 22%, transparent) !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border-radius: 0px !important;
+}
+
+::-webkit-scrollbar-thumb:hover,
+::-webkit-scrollbar-thumb:active {
+  background: var(--accent-color, #e07a5f) !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border-radius: 0px !important;
+}
+
+::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent !important;
+}

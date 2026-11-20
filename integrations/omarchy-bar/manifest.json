@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "tech.kirulab.one-ship",
+  "name": "ONE-SHIP",
+  "version": "0.2.1",
+  "author": "KiruLab",
+  "license": "MIT",
+  "description": "ONE-SHIP unified Omarchy bar widget: live agents/approvals/services telemetry from oneship-status.json, production daemon controls, and automatic dev build/unit controls when symlinked from a checkout.",
+  "kinds": ["bar-widget"],
+  "entryPoints": {
+    "barWidget": "Widget.qml"
+  },
+  "barWidget": {
+    "displayName": "ONE-SHIP",
+    "description": "Live agent count, pending approvals, daemon controls, and automatic dev build progress; left click opens ONE-SHIP, right click opens the control panel.",
+    "category": "Development",
+    "aliases": ["one-ship", "oneship"],
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": { "pollIntervalMs": 2000 },
+    "schema": [
+      { "key": "pollIntervalMs", "type": "integer", "label": "Status poll interval (ms)", "min": 500, "max": 60000, "step": 500, "defaultValue": 2000 }
+    ]
+  }
+}

@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Production launcher for ONE-SHIP: ensures oneship-daemon is running and starts one-ship
+# with the Spec 12 §7.4 WebKitGTK startup retry (dmabuf -> shared_memory on early crash).
+set -u
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APP_BIN="${ONESHIP_APP_BIN:-$SCRIPT_DIR/one-ship}"
+if [[ ! -x $APP_BIN ]]; then
+  APP_BIN="$(command -v one-ship || true)"
+fi
+if [[ -z $APP_BIN || ! -x $APP_BIN ]]; then
+  echo "one-ship-launch: one-ship binary not found" >&2
+  exit 1
+fi
+
+if command -v systemctl >/dev/null 2>&1 && systemctl --user list-unit-files oneship-daemon.service >/dev/null 2>&1; then
+  if ! systemctl --user is-active --quiet oneship-daemon.service; then
+    systemctl --user start oneship-daemon.service >/dev/null 2>&1 || true
+  fi
+fi
+
+start_epoch="$(date +%s)"
+"$APP_BIN" "$@"
+rc=$?
+elapsed=$(( $(date +%s) - start_epoch ))
+
+if (( rc != 0 && elapsed < 5 )) && [[ -z ${WEBKIT_DMABUF_RENDERER_FORCE_SHM:-} ]] && [[ -z ${WEBKIT_DISABLE_DMABUF_RENDERER:-} ]]; then
+  echo "one-ship-launch: early exit ($rc after ${elapsed}s); retrying with WebKitGTK shared_memory mode" >&2
+  ONESHIP_WEBKIT_LAUNCHER_RETRY=1 WEBKIT_DMABUF_RENDERER_FORCE_SHM=1 exec "$APP_BIN" "$@"
+fi
+
+exit "$rc"

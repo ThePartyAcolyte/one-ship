@@ -1,0 +1,29 @@
+# ONE-SHIP Agent Runner Specification
+# Runner: OpenCode CLI (Multi-Provider & DeepSeek)
+# Version: 0.2.1
+
+id = "opencode"
+name = "OpenCode CLI"
+binary = "opencode"
+version = "0.2.1"
+# Lightest model, offered as the switch target when a heavier model runs out of quota.
+quota_fallback_model = "deepseek/deepseek-flash"
+
+[flags]
+model = "--model"
+effort = "--variant"
+auto_approve = "--auto"
+
+[[models]]
+id = "deepseek/deepseek-flash"
+label = "DeepSeek V4.1 Flash"
+default_effort = "high"
+effort_levels = ["low", "high", "max"]
+context_window_tokens_count = 1048576
+
+[[models]]
+id = "deepseek/deepseek-v4-pro"
+label = "DeepSeek V4 Pro (Reasoning)"
+default_effort = "high"
+effort_levels = ["low", "high", "max"]
+context_window_tokens_count = 1048576

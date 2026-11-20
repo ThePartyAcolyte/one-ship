@@ -1,0 +1,92 @@
+[package]
+name = "one-ship"
+version = "0.2.1"
+description = "ONE-SHIP - Project Orchestrator & Diagnostic Lab"
+authors = ["kirulab"]
+edition = "2021"
+default-run = "one-ship"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bin]]
+name = "one-ship"
+path = "src/main.rs"
+
+[[bin]]
+name = "oneship-daemon"
+path = "src/bin/daemon.rs"
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "oneship_lib"
+crate-type = ["rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.0", features = [] }
+
+[dependencies]
+tauri = { version = "2.0", features = [] }
+tauri-plugin-opener = "2.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "1.1.4"
+tokio = { version = "1.53.1", features = ["full"] }
+sysinfo = "0.39.6"
+dirs = "6.0.0"
+tauri-plugin-dialog = "2.7.3"
+axum = { version = "0.7", features = ["ws"] }
+tokio-tungstenite = { version = "0.24", features = ["rustls-tls-native-roots"] }
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+rusqlite = { version = "0.40", features = ["bundled"] }
+r2d2 = "0.8.10"
+r2d2_sqlite = "0.35.0"
+duckdb = { version = "1.10505.0", features = ["bundled", "r2d2"] }
+tokio-util = "0.7.19"
+futures-util = "0.3.34"
+tokio-stream = { version = "0.1", features = ["sync"] }
+aes-gcm = "0.10"
+hkdf = "0.12"
+sha2 = "0.10"
+rand = "0.8"
+base64 = "0.22"
+uuid = { version = "1.0", features = ["v4"] }
+thiserror = "2.0"
+libc = "0.2"
+chrono = { version = "0.4", features = ["serde"] }
+ts-rs = { version = "11.0", features = ["serde-json-impl"] }
+serialport = "4.7"
+rusb = "0.9"
+lancedb = "0.41"
+fastembed = "7.7"
+notify = "8.0"
+tree-sitter = "0.27"
+tree-sitter-rust = "0.24"
+tree-sitter-typescript = "0.23"
+tree-sitter-javascript = "0.25"
+tree-sitter-python = "0.25"
+tree-sitter-go = "0.25"
+tree-sitter-java = "0.23"
+tree-sitter-c-sharp = "0.24"
+tree-sitter-c = "0.24"
+tree-sitter-cpp = "0.23"
+tree-sitter-ruby = "0.23"
+tree-sitter-php = "0.25"
+tree-sitter-bash = "0.25"
+tree-sitter-html = "0.23"
+tree-sitter-css = "0.25"
+tree-sitter-json = "0.24"
+pdf-extract = "0.12"
+
+[dev-dependencies]
+tempfile = "3.0"
+
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = 0
+
+
+
