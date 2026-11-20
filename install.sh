@@ -376,7 +376,7 @@ build_and_install_core() {
   run_shell_dir "$SCRIPT_DIR" npm run build
 
   log_info "Building Rust release binaries (one-ship + oneship-daemon)..."
-  run_cmd cargo build --release --manifest-path "$SCRIPT_DIR/src-tauri/Cargo.toml" --bin one-ship --bin oneship-daemon
+  run_cmd cargo build --release --manifest-path "$SCRIPT_DIR/src-tauri/Cargo.toml" --features tauri/custom-protocol --bin one-ship --bin oneship-daemon
 
   log_info "Installing binaries and templates into $PREFIX ..."
   run_cmd install -d "$bin_dir" "$templates_dest" "$desktop_dir" "$systemd_user_dir"
