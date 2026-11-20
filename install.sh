@@ -318,7 +318,16 @@ install_base_toolchain_deps() {
       install_system_packages base-devel pkgconf openssl webkit2gtk-4.1 libayatana-appindicator librsvg protobuf systemd-libs libusb git github-cli nodejs npm rust
       ;;
     apt-get)
-      install_system_packages build-essential pkg-config libssl-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev protobuf-compiler libudev-dev libusb-1.0-0-dev curl wget file libxdo-dev git gh nodejs npm
+      local -a apt_pkgs=(build-essential pkg-config libssl-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev protobuf-compiler libudev-dev libusb-1.0-0-dev curl wget file libxdo-dev git gh)
+      # NodeSource `nodejs` already bundles `npm` and declares `Conflicts: npm`.
+      if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
+        if command -v dpkg-query >/dev/null 2>&1 && dpkg-query -W -f='${Version}\n' nodejs 2>/dev/null | grep -q 'nodesource'; then
+          apt_pkgs+=(nodejs)
+        else
+          apt_pkgs+=(nodejs npm)
+        fi
+      fi
+      install_system_packages "${apt_pkgs[@]}"
       ;;
     dnf)
       install_system_packages @development-tools pkgconf-pkg-config openssl-devel webkit2gtk4.1-devel libayatana-appindicator-gtk3-devel librsvg2-devel protobuf-compiler systemd-devel libusb1-devel git gh nodejs npm
