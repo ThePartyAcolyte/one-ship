@@ -10,7 +10,7 @@ Define ONE-SHIP's Linux workstation distribution architecture, relocatable asset
 - Portrait asset licensing isolation and procedural SVG pixel-portrait fallback.
 - Relocatable `TEMPLATES_ROOT`, Owon FPGA firmware lookup, `$PATH` executable resolution, and `systemd --user` / `.desktop` packaging files.
 - Multi-distro package-manager detection (`pacman`, `apt-get`, `dnf`, `zypper`), X11/Wayland clipboard fallback, non-Hyprland desktop/terminal generalization, and WebKitGTK launcher retry.
-- `HostCapabilities` daemon snapshot (`get_host_capabilities`), dynamic UI/settings gating, and OpenDictate decoupling.
+- `HostCapabilities` daemon snapshot (`get_host_capabilities`), dynamic UI/settings gating, and OS keyring reporting.
 - Unified dev/production Omarchy bar widget (`integrations/omarchy-bar/`).
 - Interactive [`install.sh`](../../../install.sh) installer wizard and companion tool builds.
 
@@ -58,21 +58,22 @@ Distribution uses two primary channels:
     - On **floating Linux DEs** (Ubuntu GNOME, Linux Mint Cinnamon, Fedora, KDE, XFCE — `hyprland_available == false`), `AppHeader.vue` renders a draggable header plus brutalist Minimize/Maximize/Close buttons, `App.vue` mounts 8-way `4px` edge/corner `startResizeDragging` handles, closing the window hides to a native AppIndicator/SNI System Tray (`tauri` `tray-icon`), and Tray **Quit (Stop Daemon)** stops `oneship-daemon.service` before exiting.
 - **Detached launcher and WebKitGTK startup retry (`packaging/bin/one-ship-launch`):** ensures `oneship-daemon.service` is active, detaches `one-ship` into its own session (`setsid`, logging to `$XDG_STATE_HOME/one-ship/launcher.log`, with `--foreground` for console debugging), and retries `one-ship` once with `ONESHIP_WEBKIT_LAUNCHER_RETRY=1` and `WEBKIT_DMABUF_RENDERER_FORCE_SHM=1` (logged at `WARN`) if the interface exits non-zero within 5 seconds.
 
-### `HostCapabilities`, dynamic feature gating, and OpenDictate decoupling
+### `HostCapabilities`, dynamic feature gating, and secret storage
 
-- **Host capability registry (`get_host_capabilities` in `diagnostic.rs`, `coreStore.ts`):** exposes a daemon snapshot reporting `installed_runners`, optional domain `integrations` (`rea`, `electronics`, `solidcraft`, `pcbcraft`, `desigma`, `voice_controller`), `opendictate_available`, `gdbus_available`, `omarchy_available`, `hyprland_available`, `clipboard_available`, and `package_manager`.
+- **Host capability registry (`get_host_capabilities` in `diagnostic.rs`, `coreStore.ts`):** exposes a daemon snapshot reporting `installed_runners`, optional domain `integrations` (`rea`, `electronics`, `solidcraft`, `pcbcraft`, `desigma`, `voice_controller`), `keyring_available`, `omarchy_available`, `hyprland_available`, `clipboard_available`, and `package_manager`.
 - **`HostCapabilities`, dynamic feature gating, and first-run onboarding (`SetupChecklistModal.vue`, `integrationGuides.ts`, `AddProjectModal.vue`, `AppHeader.vue`):**
-  - `run_diagnostics` reports `git_user_name`, `git_user_email`, `default_projects_root_path`, and `projects_root_exists` alongside `git`, `gh`, `glab`, and `opendictate` status.
+  - `run_diagnostics` reports `git_user_name`, `git_user_email`, `default_projects_root_path`, and `projects_root_exists` alongside `git`, `gh`, and `glab` status.
   - `isAllDiagnosticsOk` (`App.vue`) and `AppHeader.vue` (`systemHealthSummary`) require `git_installed`, non-empty `git_user_name`/`git_user_email`, `projects_root_exists`, and at least one installed runner (`installed_runners.length > 0`) before reporting `All Systems Nominal`.
-  - `SetupChecklistModal.vue` auto-opens once on first boot when prerequisites are missing (with a persistent `Don't show automatically on startup` flag and menu entry `Setup & Readiness`), guiding users through workspace root creation (`ensure_projects_root_dir`), Git global identity (`set_git_global_identity`) + `gh` install/auth, AI runner installation (`agy`, `claude`, `opencode`), and external companion tools (`oneship-designer`, `pcbcraft`, `solidcraft`, `rea`, `electronics`, `opendictate`) via `integrationGuides.ts`.
+  - `SetupChecklistModal.vue` auto-opens once on first boot when prerequisites are missing (with a persistent `Don't show automatically on startup` flag and menu entry `Setup & Readiness`), guiding users through workspace root creation (`ensure_projects_root_dir`), Git global identity (`set_git_global_identity`) + `gh` install/auth, AI runner installation (`agy`, `claude`, `opencode`), and external companion tools (`oneship-designer`, `pcbcraft`, `solidcraft`, `rea`, `electronics`) via `integrationGuides.ts`.
   - `AddProjectModal.vue` disables `Launch Project Initializer` automatically when zero runners are installed, and `clone_and_add_project` (`github.rs`) creates missing parent directories (`create_dir_all`) cleanly before cloning.
   - `ProjectWorkspace.vue` gates optional workspace tabs (`electronics`, `design`, `cad`, `pcb`, `rea`) via `coreStore.isIntegrationAvailable(...)` and includes `pcb` and `hostCapabilities` in the active-tab fallback watcher.
   - `ProjectConfigPanel.vue` and `SettingsModal.vue` hide unavailable plugin categories and filter runner dropdowns to `installed_runners` (while keeping already-configured values selectable).
   - `ProjectConfigPanel.vue` surfaces a single missing-integration warning when an imported project's `rula.toml` enables a feature unavailable on the host; `SettingsModal.vue` includes an **Integrations** tab for capability inspection, custom binary overrides, and live refresh.
-- **OpenDictate decoupling (`kopeng/opendictate.rs`, `voiceStore.ts`):**
-  - `VoiceReservationResult` distinguishes `service_available: false` from `busy`, preventing the 1.2 s polling loop and false `"OpenDictate busy"` UI state on chat input focus.
-  - `FloatingChatOverlay.vue` and `ProjectWorkspace.vue` hide OpenDictate controls when `!coreStore.isOpendictateAvailable`.
-  - `spawn_dbus_monitor` cleanly skips monitoring when `gdbus` or `DBUS_SESSION_BUS_ADDRESS` is absent and checks `$XDG_RUNTIME_DIR/opendictate_state.json` before `/tmp/opendictate_state.json`.
+- **Gemini credential storage (`secret_store.rs`):**
+  - The API key lives in the FreeDesktop Secret Service (`secret-tool`, `service=one-ship`, `username=gemini_api_key`), read into a daemon cache at startup.
+  - `get_global_config` omits the key; `save_global_config` rejects plaintext key writes; Settings exposes a password field plus Save/Clear.
+  - A legacy plaintext key is migrated once to the keyring and removed from `config.toml`. If the keyring is unavailable, the error is surfaced to the UI and the audio/dictation commands return typed errors.
+  - `secret-tool` is Linux-only; a future macOS/Windows port replaces the backend behind the same `SecretKind` interface.
 
 ### Unified Omarchy bar widget
 
@@ -90,7 +91,6 @@ Distribution uses two primary channels:
   - **DE-SIGMA (`design`):** checks `oneship-designer` & `desigma-mcp` on `$PATH`, checks local clone, optionally clones `ThePartyAcolyte/desigma` (`oneship` branch), builds, and installs into `<prefix>/bin`.
   - **PCBCraft (`pcb`):** checks `pcbcraft` & `pcbcraft-cli` on `$PATH`, checks local clone, optionally clones `tangency-labs/pcbcraft` (`main` branch), and builds with bounded memory (`-j 2`, `LTO=false`, `CODEGEN_UNITS=4`, `systemd-run --user --scope` `8G`/`10G` limits).
   - **SolidCraft (`cad`, binary-only exception):** checks `$PATH` only and guides/installs prebuilt packages (`solidcraft-bin` AUR helper or GitHub Releases binary artifact lookup); never clones or compiles SolidCraft source (`LICENSE-BRAND`).
-  - **Voice (`voice`):** checks `opendictate` and optionally clones `ThePartyAcolyte/opendictate`.
   - **Omarchy widget (`omarchy`):** symlinks and enables `integrations/omarchy-bar` (`tech.kirulab.one-ship`).
 - Non-destructive initial `~/.config/one-ship/config.toml` seeding adapted to the detected terminal emulator and installed runner CLI (`agy` / `claude` / `opencode`).
 
@@ -109,7 +109,7 @@ Distribution uses two primary channels:
 | Phase 0: Portrait licensing isolation & procedural SVG fallback | Implemented | Exclusion rules and procedural canvas portrait in place (per legacy source). |
 | Phase 1: Relocatable `TEMPLATES_ROOT`, firmware lookup, `$PATH` resolution, systemd/desktop units | Implemented | Verified `packaging/systemd/oneship-daemon.service`, `packaging/one-ship.desktop`. |
 | Phase 2: Multi-distro diagnostics, clipboard/terminal fallbacks, launcher retry | Implemented | Verified `LinuxPackageManager` / `DiagnosticError` in `kopeng/diagnostic.rs` and `packaging/bin/one-ship-launch`. |
-| Phase 3: `HostCapabilities`, dynamic UI gating, OpenDictate decoupling | Implemented | Verified `HostCapabilities`, `IntegrationCapability` in `diagnostic.rs` and `hostCapabilities` / `isIntegrationAvailable` / `isOpendictateAvailable` in `src/stores/coreStore.ts`. |
+| Phase 3: `HostCapabilities`, dynamic UI gating, OS keyring credential storage | Implemented | Verified `HostCapabilities`, `IntegrationCapability` in `diagnostic.rs`, `keyring_available` in `coreStore.ts`, and `secret_store.rs`. |
 | Phase 4: Unified dev/production Omarchy bar widget | Implemented | Verified `integrations/omarchy-bar/` (`ControlPanel.qml`, `Widget.qml`, `manifest.json`). |
 | Phase 5: Interactive `./install.sh` wizard & udev rules | Implemented (manual multi-distro runtime verification pending in `TODO.md`) | Verified [`install.sh`](../../../install.sh) and [`packaging/udev/99-oneship-instruments.rules`](../../../packaging/udev/99-oneship-instruments.rules) exist. |
 

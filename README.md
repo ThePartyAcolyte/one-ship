@@ -30,17 +30,17 @@ It does not replace Gemini on the web or the Claude desktop app.
 
 1. **Add or bootstrap a project.** Existing repositories receive read-only reconnaissance from an initializer agent that generates `rula.toml` and raises initialization flags (`docs`, `todos`, `tech_debt`, `profiler`). Greenfield projects start as a spec-first conversation that scaffolds foundational docs and `rula.toml` before any implementation code.
 2. **Talk to the crew across continuous threads.** Threads, Conversations, and runner Native Sessions are tracked separately in SQLite. Switching runners or compacting context carries a structured Brief forward; spoken summaries go to the chat overlay while technical payloads (plans, specs, code) land in side-by-side artifacts.
-3. **Control everything by voice or UI.** Use local push-to-focus dictation (**OpenDictate** over D-Bus) inside chat inputs, or press Push-to-Talk to invoke the **Global Voice Controller** ("Ship Brain") backed by Gemini Live, PipeWire audio, and the **Unified Capability Core** (`capability_discover` / `capability_execute`) across all project domains regardless of which tab is active.
+3. **Control everything by voice or UI.** Press `Alt+V` inside any text field to dictate natively with **Gemini 3.5 Transcribe Live**, or outside a field to invoke the **Global Voice Controller** ("Ship Brain") backed by Gemini Live, PipeWire audio, and the **Unified Capability Core** (`capability_discover` / `capability_execute`) across all project domains regardless of which tab is active.
 4. **Delegate, approve, and rotate quota.** Agents delegate tasks through the daemon's PID-attested HTTP MCP bus and block on explicit user approval for privileged actions (GitHub/GitLab draft PRs, deletions, migrations). Multi-account management (`google`, `deepseek`, `claude`) encrypts tokens with AES-256-GCM and rotates model pools when quotas tighten.
 5. **Stay safe with hidden snapshots.** Every agent turn and milestone can be snapshotted onto domain-scoped hidden Git refs (`refs/one-ship/snapshots/`) for per-file diffing and rollback without polluting commit history.
 6. **Remember everything in a causal graph.** Each session closes with structured minutes (`agent_session_journal`), tasks, and technical debt in SQLite, indexed alongside Tree-sitter code symbols, Markdown specs, and Git history in a local **LanceDB + BGE-M3** vector store and `knowledge_edges` graph.
 
 ## Core Subsystems
 
-Based on the [41 living specifications](docs/specs/README.md):
+Based on the [40 living specifications](docs/specs/README.md):
 
 - **Autonomous Agent Runtime & MCP Bus:** Headless multi-turn supervision (`agy`, `claude` over `stream-json`; `opencode` with DeepSeek over ACP) with process-group isolation, boot-time adoption, on-demand skill symlinking (`.agents/skills/`), deterministic `64×96` pixel-portrait DNA, and a 59-tool HTTP MCP server attested via Linux `/proc`.
-- **Voice & Unified Capability Core:** Two decoupled layers — local speech-to-text streaming via [OpenDictate](https://github.com/ThePartyAcolyte/opendictate) (`org.kirulab.OpenDictate`), and the global Gemini Live conversational orchestrator wired to a navigation-agnostic `CapabilityProvider` registry and persistent voice sessions with a 65K TPM budget guard.
+- **Voice & Unified Capability Core:** Native Gemini Live dictation (`gemini-3.5-transcribe-live`) with revision-safe transcript reconciliation, VAD rollover and replay into focused fields, plus the global Gemini Live conversational orchestrator wired to a navigation-agnostic `CapabilityProvider` registry and persistent voice sessions with a 65K TPM budget guard.
 - **Projects, Git & Forge Collaboration:** 4-level cascading configuration (`rula.toml` ↔ `~/.config/one-ship/config.toml`), supervised persistent services and one-shot tasks with port-conflict release, cyclic logging, dual-signification Git workspace, provider-neutral Forge workflows (GitHub via `gh`, GitLab via `glab`, persistent triage inbox, `Fork ↔ Upstream` flow), opt-in Kanban/Schedule/Gantt/Milestones, and a sandboxed CodeMirror 6 explorer with inline document comments.
 - **Observability & Continuous Profiling:** Every supervised service and task run is sampled continuously into **DuckDB** (`CPU %`, tree `RSS`, threads, disk I/O) and can wrap profiler engines (`samply`, `py-spy`, `v8prof`) via declarative `manifest.toml` plugins.
 - **Multidisciplinary Hardware, Design, CAD/PCB & RE Lab:**
@@ -86,9 +86,9 @@ The workspace adapts dynamically to enabled `rula.toml` plugins and `HostCapabil
       (state, minutes, FTS5,     (continuous tree      (BGE-M3 INT8 embeddings +
        knowledge_edges, logs)     profiling samples)    Tree-sitter RAG chunks)
                  ▲
-                 │ Freedesktop D-Bus (org.kirulab.OpenDictate)
+                 │ Gemini Live (native dictation)
         ┌────────┴────────┐
-        │   OpenDictate   │ (Optional local speech-to-text dictation)
+        │ Gemini Live STT │ (Native focused-field dictation)
         └─────────────────┘
 ```
 
@@ -99,7 +99,7 @@ The workspace adapts dynamically to enabled `rula.toml` plugins and `HostCapabil
 | Daemon | Rust, Tokio, Axum (`:8765`), `thiserror`, `ts-rs`, `rusb`, `serialport` |
 | Storage | SQLite (WAL + FTS5), DuckDB, LanceDB + local `BGE-M3` INT8 ONNX (`fastembed` / `ort`) + Tree-sitter |
 | Agents | `agy`, `claude` (`stream-json`), `opencode` + DeepSeek (ACP), Streamable HTTP MCP |
-| Voice | PipeWire (`pw-record`/`pw-play`) + Gemini Live ("Ship Brain"); optional OpenDictate over D-Bus |
+| Voice | PipeWire (`pw-record`/`pw-play`) + Gemini Live (`gemini-3.5-transcribe-live` dictation and "Ship Brain") |
 | Window | Tauri v2, Vue 3, TypeScript, Pinia, Tailwind CSS, CodeMirror 6, AppIndicator/SNI tray |
 | Host Targets | Linux workstations: Arch / Omarchy (Hyprland), Ubuntu (GNOME), Fedora Workstation, Linux Mint (Cinnamon) |
 
@@ -164,7 +164,7 @@ Recent Ubuntu and floating-desktop adaptations built into the installer and laun
 - **Ubuntu/Debian (`apt-get`) toolchain dependencies:** installs `libwebkit2gtk-4.1-dev`, `libayatana-appindicator3-dev` (tray support on GNOME/Cinnamon), `protobuf-compiler` (required by `lance-encoding`), `libudev-dev`, `libusb-1.0-0-dev`, `libxdo-dev`, `librsvg2-dev`, and `libssl-dev`.
 - **Floating-desktop window & tray lifecycle (`!is_hyprland_session()`):** outside Hyprland, `one-ship` mounts draggable header controls (Minimize / Maximize / Close), 8-direction `4px` edge resize handles (`startResizeDragging`), and a native System Tray icon (`one-ship-tray`) so closing the window hides to the tray while `oneship-daemon.service` stays alive (use tray **Quit (Stop Daemon)** to stop both).
 - **Detached production launcher (`one-ship-launch`):** ensures `oneship-daemon.service` is active, detaches the GUI via `setsid` (logs in `$XDG_STATE_HOME/one-ship/launcher.log`, or pass `--foreground`), and retries once with `WEBKIT_DMABUF_RENDERER_FORCE_SHM=1` if WebKitGTK exits abnormally within 5 seconds.
-- **Session portability:** Wayland (`wl-paste`) and X11 (`xclip`) clipboard image paste, fallback detection for standard terminals (`gnome-terminal`, `konsole`, `xfce4-terminal`, `x-terminal-emulator`, `xterm`), and graceful OpenDictate decoupling when D-Bus dictation is absent.
+- **Session portability:** Wayland (`wl-paste`) and X11 (`xclip`) clipboard image paste, fallback detection for standard terminals (`gnome-terminal`, `konsole`, `xfce4-terminal`, `x-terminal-emulator`, `xterm`), and native dictation that degrades with an explicit error when PipeWire or the OS keyring is unavailable.
 
 > [!NOTE]
 > Sandboxed Flatpak and Snap packages are intentionally unsupported because the daemon relies on direct Linux `/proc/<pid>` caller attestation, `systemd --user` units, USB/serial device nodes, and host agent CLIs.
@@ -214,7 +214,7 @@ Start at [`docs/README.md`](docs/README.md) or browse the categorized specificat
 | Agents & Continuity | [02-agents/](docs/specs/02-agents/README.md) (Supervisor, threads, chat overlay, multi-account, quota, snapshots, skills, portraits) |
 | Projects, Git & Forge | [03-projects/](docs/specs/03-projects/README.md) (Registry/scripts, Git cockpit, logging, remotes, Forge, inbox, milestones, artifacts, greenfield) |
 | Observability & Graph | [04-observability/](docs/specs/04-observability/README.md) (Session lifecycle, SQLite devlog, LanceDB/BGE-M3 graph, DuckDB profiler) |
-| Voice & Capability Core | [05-voice/](docs/specs/05-voice/README.md) (OpenDictate D-Bus, chat dictation, Gemini Live controller, Unified Capability Core) |
+| Voice & Capability Core | [05-voice/](docs/specs/05-voice/README.md) (Native Gemini dictation, Gemini Live controller, Unified Capability Core) |
 | Hardware, CAD & RE | [06-hardware-and-cad/](docs/specs/06-hardware-and-cad/README.md) (Electronics/USB, One-Ship Designer, SolidCraft & PCBCraft, REA) |
 | UI & Design System | [07-ui/](docs/specs/07-ui/README.md) (Tokens, component library, chrome, daemon UI state machine, settings/overview, Lang Belta i18n) |
 | Legacy Mapping | [docs/legacy/MAPPING.md](docs/legacy/MAPPING.md) (Traceability from original 39 numbered specs) |

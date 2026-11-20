@@ -21,7 +21,6 @@ FEAT_ELECTRONICS=0
 FEAT_DESIGN=0
 FEAT_PCB=0
 FEAT_CAD=0
-FEAT_VOICE=0
 FEAT_OMARCHY=0
 
 # Detected environment globals
@@ -38,7 +37,6 @@ DESIGMA_REPO_URL="https://github.com/ThePartyAcolyte/desigma.git"
 DESIGMA_BRANCH="oneship"
 PCBCRAFT_REPO_URL="https://github.com/tangency-labs/pcbcraft.git"
 PCBCRAFT_BRANCH="main"
-OPENDICTATE_REPO_URL="https://github.com/ThePartyAcolyte/opendictate.git"
 SOLIDCRAFT_RELEASES_URL="https://github.com/tangency-labs/solidcraft/releases/latest"
 SOLIDCRAFT_RELEASES_API="https://api.github.com/repos/tangency-labs/solidcraft/releases/latest"
 
@@ -101,12 +99,12 @@ Options:
       standard : Core + REA + Electronics (+udev) + Voice + Omarchy widget (if present)
       full     : Standard + DE-SIGMA (source/clone) + PCBCraft (source/clone) + SolidCraft (binary check/install)
   --features <list>
-      Comma-separated optional features: rea,electronics,design,pcb,cad,voice,omarchy
+      Comma-separated optional features: rea,electronics,design,pcb,cad,omarchy
       (core is always installed)
   --prefix <dir>
       Installation prefix for bin/ and share/ (default: ~/.local)
   --repos-dir <dir>
-      Directory where companion source repos (desigma, pcbcraft, opendictate) live or are cloned
+      Directory where companion source repos (desigma, pcbcraft) live or are cloned
       (default: parent directory of this checkout)
   --skip-deps
       Do not install distribution packages via pacman/apt-get/dnf/zypper
@@ -212,13 +210,13 @@ apply_profile_or_features() {
   if [[ -n "$PROFILE" ]]; then
     case "$PROFILE" in
       minimal)
-        FEAT_REA=0; FEAT_ELECTRONICS=0; FEAT_DESIGN=0; FEAT_PCB=0; FEAT_CAD=0; FEAT_VOICE=0; FEAT_OMARCHY=0
+        FEAT_REA=0; FEAT_ELECTRONICS=0; FEAT_DESIGN=0; FEAT_PCB=0; FEAT_CAD=0; FEAT_OMARCHY=0
         ;;
       standard)
-        FEAT_REA=1; FEAT_ELECTRONICS=1; FEAT_DESIGN=0; FEAT_PCB=0; FEAT_CAD=0; FEAT_VOICE=1; FEAT_OMARCHY="$IS_OMARCHY"
+        FEAT_REA=1; FEAT_ELECTRONICS=1; FEAT_DESIGN=0; FEAT_PCB=0; FEAT_CAD=0; FEAT_OMARCHY="$IS_OMARCHY"
         ;;
       full)
-        FEAT_REA=1; FEAT_ELECTRONICS=1; FEAT_DESIGN=1; FEAT_PCB=1; FEAT_CAD=1; FEAT_VOICE=1; FEAT_OMARCHY="$IS_OMARCHY"
+        FEAT_REA=1; FEAT_ELECTRONICS=1; FEAT_DESIGN=1; FEAT_PCB=1; FEAT_CAD=1; FEAT_OMARCHY="$IS_OMARCHY"
         ;;
       *)
         log_err "Unsupported profile '$PROFILE' (expected minimal|standard|full)"
@@ -239,7 +237,6 @@ apply_profile_or_features() {
         design|desigma) FEAT_DESIGN=1 ;;
         pcb|pcbcraft) FEAT_PCB=1 ;;
         cad|solidcraft) FEAT_CAD=1 ;;
-        voice|opendictate) FEAT_VOICE=1 ;;
         omarchy|omarchy-bar) FEAT_OMARCHY=1 ;;
         *)
           log_err "Unknown feature token '$tok' in --features"
@@ -268,7 +265,6 @@ interactive_wizard() {
   ask_yes_no "Enable Design Editor (DE-SIGMA 'oneship-designer': detect or clone+build)?" "n" && FEAT_DESIGN=1 || FEAT_DESIGN=0
   ask_yes_no "Enable EDA/PCB Workbench (PCBCraft: detect or clone+build)?" "n" && FEAT_PCB=1 || FEAT_PCB=0
   ask_yes_no "Enable 3D CAD Integration (SolidCraft prebuilt binary check/install)?" "n" && FEAT_CAD=1 || FEAT_CAD=0
-  ask_yes_no "Enable Local Voice Dictation (OpenDictate check / optional clone)?" "n" && FEAT_VOICE=1 || FEAT_VOICE=0
   if (( IS_OMARCHY )); then
     ask_yes_no "Install Production Omarchy Top Bar Widget (tech.kirulab.one-ship)?" "y" && FEAT_OMARCHY=1 || FEAT_OMARCHY=0
   fi
@@ -767,25 +763,6 @@ for a in assets:
   log_warn "SolidCraft is not cloned/compiled from source. Download prebuilt binaries from: $SOLIDCRAFT_RELEASES_URL"
 }
 
-install_feature_voice() {
-  log_info "Checking OpenDictate voice integration..."
-  if command -v opendictate >/dev/null 2>&1; then
-    log_ok "OpenDictate already installed: $(command -v opendictate)"
-    return 0
-  fi
-
-  local od_dir="${ONESHIP_OPENDICTATE_DIR:-$REPOS_DIR/opendictate}"
-  if ensure_repo_cloned_or_prompt "OpenDictate" "$od_dir" "$OPENDICTATE_REPO_URL" "main"; then
-    if [[ -x "$od_dir/install.sh" ]]; then
-      if ask_yes_no "Run OpenDictate's installer ($od_dir/install.sh)?" "y"; then
-        run_shell_dir "$od_dir" ./install.sh
-      fi
-    else
-      log_info "OpenDictate cloned to $od_dir; follow its README to finish D-Bus service setup."
-    fi
-  fi
-}
-
 install_feature_omarchy() {
   log_info "Installing Production Omarchy Top Bar Widget (tech.kirulab.one-ship)..."
   local plugins_dir="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/plugins"
@@ -842,7 +819,7 @@ print_summary() {
   echo "  Session / WM    : $SESSION_TYPE (Hyprland=$IS_HYPRLAND, Omarchy=$IS_OMARCHY)"
   echo "  Install Prefix  : $PREFIX"
   echo "  Repos Directory : $REPOS_DIR"
-  echo "  Features        : core=1 rea=$FEAT_REA electronics=$FEAT_ELECTRONICS design=$FEAT_DESIGN pcb=$FEAT_PCB cad=$FEAT_CAD voice=$FEAT_VOICE omarchy=$FEAT_OMARCHY"
+  echo "  Features        : core=1 rea=$FEAT_REA electronics=$FEAT_ELECTRONICS design=$FEAT_DESIGN pcb=$FEAT_PCB cad=$FEAT_CAD omarchy=$FEAT_OMARCHY"
   echo ""
 }
 
@@ -872,7 +849,6 @@ main() {
   (( FEAT_DESIGN ))      && install_feature_design
   (( FEAT_PCB ))         && install_feature_pcb
   (( FEAT_CAD ))         && install_feature_cad_solidcraft
-  (( FEAT_VOICE ))       && install_feature_voice
   (( FEAT_OMARCHY ))     && install_feature_omarchy
 
   if ! command -v agy >/dev/null 2>&1 && ! command -v claude >/dev/null 2>&1 && ! command -v opencode >/dev/null 2>&1; then

@@ -84,5 +84,17 @@ check_zero_matches "Zero hardcoded /home/butcherwutcher paths" \
     '/home/butcherwutcher' \
     src src-tauri/src
 
+# 9. English-only documentation & templates (AGENTS.md §1.2)
+SPANISH_HITS="$(grep -rnE '[áéíóúÁÉÍÓÚñÑ¿¡]|\b(especificación|especificaciones|traducción|configuración|documentación|archivo)\b' \
+    README.md AGENTS.md docs/00_manifesto.md docs/01_ubiquitous_language.md docs/02_architecture_stack.md \
+    docs/03_lang_belta_dictionary.md docs/DESIGN_RULES.md docs/README.md docs/specs templates .agents 2>/dev/null || true)"
+if [[ -n "$SPANISH_HITS" ]]; then
+    echo "[FAIL] Spanish text detected in active documentation/templates (must be English only):"
+    echo "$SPANISH_HITS" | head -n 20
+    FAILURES=$((FAILURES + 1))
+else
+    echo "[PASS] English-only active documentation and templates"
+fi
+
 echo "=== Summary: $FAILURES hard failure(s) ==="
 exit "$FAILURES"

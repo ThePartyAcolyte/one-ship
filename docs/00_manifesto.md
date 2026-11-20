@@ -1,7 +1,7 @@
 # Manifesto: ONE-SHIP
 
 ## Vision
-ONE-SHIP is a **Multidisciplinary Maker's Toolbox and Agentic Control Center** for Arch Linux (Omarchy ecosystem). Physical and systems engineering span multiple tightly coupled worlds—software, embedded firmware, USB benchtop instrumentation, 3D CAD, PCB/EDA design, UI design, binary reverse engineering, and project management—that are traditionally fragmented across disconnected software silos. ONE-SHIP bridges these worlds under a single roof, acting as a silent process orchestrator, a hardware/software telemetry hub, and the central nervous system for autonomous AI agents.
+ONE-SHIP is a **Multidisciplinary Maker's Toolbox and Agentic Control Center** for Linux workstations (Arch/Omarchy, Ubuntu, Fedora Workstation, and Linux Mint). Physical and systems engineering span multiple tightly coupled worlds—software, embedded firmware, USB benchtop instrumentation, 3D CAD, PCB/EDA design, UI design, binary reverse engineering, and project management—that are traditionally fragmented across disconnected software silos. ONE-SHIP bridges these worlds under a single roof, acting as a silent process orchestrator, a hardware/software telemetry hub, and the central nervous system for autonomous AI agents.
 
 ## What it IS
 *   **A Maker's Multidisciplinary Workstation:** Unifies code and living specifications (via an integrated CodeMirror 6 editor), 3D CAD (`SolidCraft`), PCB/EDA (`PCBCraft`), UI design (`One-Ship Designer`), USB hardware instrumentation (oscilloscopes, logic analyzers, MCU toolchains), and reverse engineering (`REA`) into one cohesive cockpit.

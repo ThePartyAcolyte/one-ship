@@ -58,6 +58,13 @@ import type { UiStateSnapshot } from './generated/UiStateSnapshot';
 import type { UiSurfaceRegistry } from './generated/UiSurfaceRegistry';
 import type { SetVoiceControllerEnabledArgs } from './generated/SetVoiceControllerEnabledArgs';
 import type { VoiceControllerStatus } from './generated/VoiceControllerStatus';
+import type { DictationSessionArgs } from './generated/DictationSessionArgs';
+import type { DictationSessionInfo } from './generated/DictationSessionInfo';
+import type { DictationResult } from './generated/DictationResult';
+import type { DictationStatus } from './generated/DictationStatus';
+import type { SetDictationAutoSendArgs } from './generated/SetDictationAutoSendArgs';
+import type { GeminiApiKeyStatus } from './generated/GeminiApiKeyStatus';
+import type { SetGeminiApiKeyArgs } from './generated/SetGeminiApiKeyArgs';
 import type { GetProjectPcbcraftStatusArgs } from './generated/GetProjectPcbcraftStatusArgs';
 import type { InspectPcbcraftProjectArgs } from './generated/InspectPcbcraftProjectArgs';
 import type { LaunchProjectPcbcraftArgs } from './generated/LaunchProjectPcbcraftArgs';
@@ -87,8 +94,7 @@ import type { DeepSeekBalanceResponse } from './generated/DeepSeekBalanceRespons
 import type { DeleteAgentPersonaArgs } from './generated/DeleteAgentPersonaArgs';
 import type { DesigmaPreviewResult } from './generated/DesigmaPreviewResult';
 import type { DesigmaStatus } from './generated/DesigmaStatus';
-import type { DiagnosticState } from './generated/DiagnosticState';
-import type { EnsureProjectsRootDirArgs } from './generated/EnsureProjectsRootDirArgs';
+import type { DiagnosticState } from './generated/DiagnosticState';import type { EnsureProjectsRootDirArgs } from './generated/EnsureProjectsRootDirArgs';
 import type { SetGitGlobalIdentityArgs } from './generated/SetGitGlobalIdentityArgs';
 import type { DiscoveredInstrument } from './generated/DiscoveredInstrument';
 import type { DiscoveredMcuPort } from './generated/DiscoveredMcuPort';
@@ -190,7 +196,6 @@ import type { UpdateTurnApprovalArgs } from './generated/UpdateTurnApprovalArgs'
 import type { AddProjectArgs } from './generated/AddProjectArgs';
 import type { AttachFileToProjectArgs } from './generated/AttachFileToProjectArgs';
 import type { AttachedFileResult } from './generated/AttachedFileResult';
-import type { CancelVoiceCaptureArgs } from './generated/CancelVoiceCaptureArgs';
 import type { CommitFileChange } from './generated/CommitFileChange';
 import type { CompareRunsArgs } from './generated/CompareRunsArgs';
 import type { CreateDocumentCommentArgs } from './generated/CreateDocumentCommentArgs';
@@ -227,7 +232,6 @@ import type { ListDocumentCommentsArgs } from './generated/ListDocumentCommentsA
 import type { ListProjectSnapshotsArgs } from './generated/ListProjectSnapshotsArgs';
 import type { MarketplaceSkillItem } from './generated/MarketplaceSkillItem';
 import type { MigrationResult } from './generated/MigrationResult';
-import type { OpenDictateStatus } from './generated/OpenDictateStatus';
 import type { PluginConfigSchema } from './generated/PluginConfigSchema';
 import type { ProfilerCatalog } from './generated/ProfilerCatalog';
 import type { ProjectIdArgs } from './generated/ProjectIdArgs';
@@ -271,8 +275,6 @@ import type { ToggleProjectFavoriteArgs } from './generated/ToggleProjectFavorit
 import type { ToggleProjectTabVisibilityArgs } from './generated/ToggleProjectTabVisibilityArgs';
 import type { TransferProjectItemsArgs } from './generated/TransferProjectItemsArgs';
 import type { VcsAction } from './generated/VcsAction';
-import type { VoiceReservationRequest } from './generated/VoiceReservationRequest';
-import type { VoiceReservationResult } from './generated/VoiceReservationResult';
 import type { CreateProjectStageArgs } from './generated/CreateProjectStageArgs';
 import type { DeleteProjectStageArgs } from './generated/DeleteProjectStageArgs';
 import type { ListProjectStagesArgs } from './generated/ListProjectStagesArgs';
@@ -437,9 +439,14 @@ export interface DaemonCommands {
   list_agent_runners: { args: NoArgs; result: RunnerSchema[] };
 
   get_active_theme: { args: NoArgs; result: ThemeColors };
-  reserve_voice_capture: { args: VoiceReservationRequest; result: VoiceReservationResult };
-  cancel_voice_capture: { args: CancelVoiceCaptureArgs; result: boolean };
-  get_opendictate_status: { args: NoArgs; result: OpenDictateStatus };
+  start_dictation: { args: NoArgs; result: DictationSessionInfo };
+  stop_dictation: { args: DictationSessionArgs; result: DictationResult };
+  cancel_dictation: { args: DictationSessionArgs; result: null };
+  get_dictation_status: { args: NoArgs; result: DictationStatus };
+  set_dictation_auto_send: { args: SetDictationAutoSendArgs; result: DictationStatus };
+  get_gemini_api_key_status: { args: NoArgs; result: GeminiApiKeyStatus };
+  set_gemini_api_key: { args: SetGeminiApiKeyArgs; result: GeminiApiKeyStatus };
+  clear_gemini_api_key: { args: NoArgs; result: GeminiApiKeyStatus };
 
   get_ui_registry: { args: NoArgs; result: UiSurfaceRegistry };
   get_ui_state: { args: NoArgs; result: UiStateSnapshot };

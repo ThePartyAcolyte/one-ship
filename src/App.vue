@@ -31,12 +31,14 @@ import { useDialogueStore } from './stores/dialogueStore';
 import { useWorkspaceLayoutStore, type WorkspaceTab } from './stores/workspaceLayoutStore';
 import { useAccountStore } from './stores/useAccountStore';
 import { useAgentMetricsStore } from './stores/agentMetricsStore';
-import { useVoiceStore } from './stores/voiceStore';
+import { useDictationStore } from './stores/dictationStore';
 import { useVoiceControllerStore } from './stores/voiceControllerStore';
+import { useVoiceInput } from './composables/useVoiceInput';
 import { emitUiEvent, onUiEvent } from './utils/uiEvents';
 
 const { locale } = useI18n();
 const coreStore = useCoreStore();
+const voiceInput = useVoiceInput();
 
 type WindowResizeDirection = Parameters<ReturnType<typeof getCurrentWindow>['startResizeDragging']>[0];
 
@@ -484,19 +486,17 @@ async function onWindowFocus() {
 }
 
 function onGlobalKeydown(e: KeyboardEvent) {
-  const voiceController = useVoiceControllerStore();
-  if (
-    voiceController.isPttHeld &&
-    ((e.altKey && (e.key === 'Backspace' || e.code === 'Backspace')) || e.key === 'Escape')
-  ) {
+  const isCancelShortcut = e.key === 'Escape'
+    || (e.altKey && (e.key === 'Backspace' || e.code === 'Backspace'));
+  if (isCancelShortcut && voiceInput.cancel()) {
     e.preventDefault();
-    voiceController.cancelPushToTalk();
+    e.stopPropagation();
     return;
   }
   if (e.altKey && (e.key === 'v' || e.key === 'V')) {
     e.preventDefault();
     if (!e.repeat) {
-      void voiceController.toggleRecording();
+      void voiceInput.toggle();
     }
     return;
   }
@@ -646,6 +646,7 @@ onMounted(async () => {
   coreStore.initTauriListeners();
   dialogueStore.initListener();
   useVoiceControllerStore().initListeners().catch(reportAsyncFailure);
+  useDictationStore().initListeners().catch(reportAsyncFailure);
 
   let unlistenResize: (() => void) | null = null;
   try {
@@ -681,7 +682,7 @@ onMounted(async () => {
     syncTheme();
   }));
 
-  window.addEventListener('keydown', onGlobalKeydown);
+  window.addEventListener('keydown', onGlobalKeydown, { capture: true });
   window.addEventListener('focus', onWindowFocus);
   window.addEventListener('click', onGlobalClick);
   window.addEventListener('contextmenu', onGlobalContextMenu);
@@ -689,7 +690,7 @@ onMounted(async () => {
   onUnmounted(() => {
     if (unlistenResize) unlistenResize();
     uiUnlisteners.forEach(u => u());
-    window.removeEventListener('keydown', onGlobalKeydown);
+    window.removeEventListener('keydown', onGlobalKeydown, { capture: true });
     window.removeEventListener('focus', onWindowFocus);
     window.removeEventListener('click', onGlobalClick);
     window.removeEventListener('contextmenu', onGlobalContextMenu);
@@ -697,7 +698,7 @@ onMounted(async () => {
     dialogueStore.teardownListeners();
     layoutStore.teardown();
     useVoiceControllerStore().teardown();
-    useVoiceStore().teardown();
+    useDictationStore().teardown();
     stopChatResize();
     if (themeInterval) clearInterval(themeInterval);
   });

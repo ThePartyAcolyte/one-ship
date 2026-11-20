@@ -631,11 +631,21 @@ async fn handle_voice_socket(local_ws: WebSocket) {
                                 }
                                 // Stay in Connecting until pw-record delivers its first PCM frame so UI
                                 // Listening state reflects actual active PipeWire capture.
+                                let lease = match crate::audio_capture::try_acquire("voice_controller") {
+                                    Ok(lease) => lease,
+                                    Err(crate::audio_capture::CaptureError::Busy { owner }) => {
+                                        let message = format!("Microphone is busy: {owner}");
+                                        crate::logger::log("WARN", "voice_controller", &message);
+                                        mgr.set_state(VoiceControllerState::Error, Some(message));
+                                        continue;
+                                    }
+                                };
                                 mgr.set_state(VoiceControllerState::Connecting, None);
                                 let handle = spawn_pw_record_task(
                                     gemini_out_for_local.clone(),
                                     local_out_for_pw.clone(),
                                     mgr,
+                                    lease,
                                 );
                                 *pw_handle_for_local.lock().await = Some(handle);
                             }
@@ -1195,11 +1205,13 @@ fn spawn_pw_record_task(
     gemini_out_tx: mpsc::Sender<TungsteniteMessage>,
     local_out_tx: mpsc::Sender<AxumWsMessage>,
     mgr: &'static VoiceControllerManager,
+    lease: crate::audio_capture::CaptureLease,
 ) -> tokio::task::JoinHandle<()> {
     const CHUNK_BYTES_COUNT: usize = 1600; // 50 ms at 16 kHz, 16-bit mono
     const WAVEFORM_POINTS_COUNT: usize = 48;
 
     tokio::spawn(async move {
+        let _lease = lease;
         let mut child = match tokio::process::Command::new("pw-record")
             .args(["--raw", "--rate", "16000", "--channels", "1", "--format", "s16", "-"])
             .stdout(Stdio::piped())
@@ -1274,6 +1286,65 @@ fn spawn_pw_record_task(
     })
 }
 
+/// Deterministic parser for GVariant string tuples emitted by `gdbus`.
+fn parse_gvariant_tuple(line: &str) -> Vec<String> {
+    let mut args = Vec::new();
+    let chars: Vec<char> = line.chars().collect();
+    let mut i = 0;
+    while i < chars.len() && chars[i] != '(' {
+        i += 1;
+    }
+    if i >= chars.len() {
+        return args;
+    }
+    i += 1;
+    while i < chars.len() {
+        while i < chars.len() && (chars[i].is_whitespace() || chars[i] == ',') {
+            i += 1;
+        }
+        if i >= chars.len() || chars[i] == ')' {
+            break;
+        }
+        let quote = chars[i];
+        if quote == '\'' || quote == '"' {
+            i += 1;
+            let mut value = String::new();
+            while i < chars.len() {
+                if chars[i] == '\\' && i + 1 < chars.len() {
+                    i += 1;
+                    match chars[i] {
+                        'n' => value.push('\n'),
+                        'r' => value.push('\r'),
+                        't' => value.push('\t'),
+                        '\\' => value.push('\\'),
+                        '\'' => value.push('\''),
+                        '"' => value.push('"'),
+                        other => {
+                            value.push('\\');
+                            value.push(other);
+                        }
+                    }
+                } else if chars[i] == quote {
+                    i += 1;
+                    break;
+                } else {
+                    value.push(chars[i]);
+                }
+                i += 1;
+            }
+            args.push(value);
+        } else {
+            let mut token = String::new();
+            while i < chars.len() && chars[i] != ',' && chars[i] != ')' && !chars[i].is_whitespace() {
+                token.push(chars[i]);
+                i += 1;
+            }
+            args.push(token);
+        }
+    }
+    args
+}
+
 /// Finds all active `org.mpris.MediaPlayer2.*` bus names currently `'Playing'` and pauses them.
 async fn pause_playing_mpris_players() -> Vec<String> {
     let Ok(out) = tokio::process::Command::new("gdbus")
@@ -1293,7 +1364,7 @@ async fn pause_playing_mpris_players() -> Vec<String> {
         return Vec::new();
     };
     let text = String::from_utf8_lossy(&out.stdout);
-    let names = crate::kopeng::opendictate::parse_gvariant_tuple(&text);
+    let names = parse_gvariant_tuple(&text);
     let mut paused = Vec::new();
 
     for name in names {
@@ -1743,7 +1814,11 @@ async fn execute_core_tool(session_id: &str, name: &str, args: Value) -> Value {
                 .map_err(|e| VoiceControllerError::Tool(e.to_string()))
             })
             .await;
-            flatten_blocking_tool_result(res)
+            let out = flatten_blocking_tool_result(res);
+            if out.get("ok").and_then(|v| v.as_bool()) == Some(true) {
+                crate::voice_harness::record_active_project(session_id.to_string(), project_id).await;
+            }
+            out
         }
         "ui_open_agent_chat" => {
             let Some(project_id) = args.get("project_id").and_then(|v| v.as_i64()) else {

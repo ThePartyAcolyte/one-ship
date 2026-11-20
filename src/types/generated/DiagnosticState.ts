@@ -3,4 +3,4 @@
 /**
  * Availability of the host tools ONE-SHIP integrates with, shown in the header's diagnostics popover.
  */
-export type DiagnosticState = { git_installed: boolean, git_user_name: string | null, git_user_email: string | null, default_projects_root_path: string, projects_root_exists: boolean, gh_installed: boolean, gh_authenticated: boolean, glab_installed: boolean, glab_authenticated: boolean, opendictate_available: boolean, package_manager: string | null, can_auto_install_tools: boolean, };
+export type DiagnosticState = { git_installed: boolean, git_user_name: string | null, git_user_email: string | null, default_projects_root_path: string, projects_root_exists: boolean, gh_installed: boolean, gh_authenticated: boolean, glab_installed: boolean, glab_authenticated: boolean, package_manager: string | null, can_auto_install_tools: boolean, };

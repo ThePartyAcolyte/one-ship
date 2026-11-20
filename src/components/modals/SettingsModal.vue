@@ -11,6 +11,7 @@ import { daemonCall } from '../../utils/daemonClient';
 import { emitUiEvent } from '../../utils/uiEvents';
 import type { ConfigFieldSchema, PluginConfigSchema, ProjectRecord } from '../../types';
 import type { AgentPairSchema } from '../../types/generated/AgentPairSchema';
+import type { GeminiApiKeyStatus } from '../../types/generated/GeminiApiKeyStatus';
 import type { JsonValue } from '../../types/generated/serde_json/JsonValue';
 
 type ConfigPrimitive = string | number | boolean | string[];
@@ -44,6 +45,53 @@ const rawGlobalConfig = shallowRef<JsonValue | null>(null);
 const isSavingSettings = ref(false);
 const settingsError = ref<string | null>(null);
 const isTestingVoice = ref(false);
+const secretDrafts = ref<Record<string, string>>({});
+const secretStatus = ref<GeminiApiKeyStatus | null>(null);
+const isSavingSecret = ref(false);
+
+function secretKey(pluginId: string, fieldKey: string): string {
+  return `${pluginId}.${fieldKey}`;
+}
+
+async function saveSecret(pluginId: string, fieldKey: string) {
+  const key = secretKey(pluginId, fieldKey);
+  const value = (secretDrafts.value[key] ?? '').trim();
+  if (!value) {
+    settingsError.value = 'Enter an API key before saving';
+    return;
+  }
+  if (pluginId !== 'voice_controller' || fieldKey !== 'gemini_api_key') {
+    settingsError.value = `Unsupported secret field ${key}`;
+    return;
+  }
+  isSavingSecret.value = true;
+  settingsError.value = null;
+  try {
+    secretStatus.value = await daemonCall('set_gemini_api_key', { apiKey: value });
+    secretDrafts.value[key] = '';
+  } catch (err: unknown) {
+    settingsError.value = err instanceof Error ? err.message : String(err);
+  } finally {
+    isSavingSecret.value = false;
+  }
+}
+
+async function clearSecret(pluginId: string, fieldKey: string) {
+  if (pluginId !== 'voice_controller' || fieldKey !== 'gemini_api_key') {
+    settingsError.value = `Unsupported secret field ${secretKey(pluginId, fieldKey)}`;
+    return;
+  }
+  isSavingSecret.value = true;
+  settingsError.value = null;
+  try {
+    secretStatus.value = await daemonCall('clear_gemini_api_key', {});
+    secretDrafts.value[secretKey(pluginId, fieldKey)] = '';
+  } catch (err: unknown) {
+    settingsError.value = err instanceof Error ? err.message : String(err);
+  } finally {
+    isSavingSecret.value = false;
+  }
+}
 
 /** Closes the modal on Escape; runs in the capture phase so it wins over nested controls. */
 function handleGlobalKeydown(e: KeyboardEvent) {
@@ -219,6 +267,13 @@ async function loadSettings() {
     // Runner, model and effort options come only from the runner manifests.
     await runnerCatalog.loadRunnerCatalog();
     pluginSchemas.value = await daemonCall("get_plugin_schemas", {});
+    if (props.scope === 'global') {
+      try {
+        secretStatus.value = await daemonCall('get_gemini_api_key_status', {});
+      } catch (err: unknown) {
+        console.warn('[SettingsModal] gemini key status failed:', err);
+      }
+    }
 
     const values: Record<string, Record<string, ConfigPrimitive>> = {};
 
@@ -231,6 +286,11 @@ async function loadSettings() {
         values[plugin.plugin_id] = {};
         for (const field of plugin.fields) {
           const fullKey = `${plugin.plugin_id}.${field.key}`;
+          if (field.field_type === 'secret') {
+            values[plugin.plugin_id][field.key] = '';
+            settingsProvenance.value[fullKey] = 'keyring';
+            continue;
+          }
           const detail = scopedDetails[fullKey];
           if (detail) {
             values[plugin.plugin_id][field.key] = detail.value as ConfigPrimitive;
@@ -266,6 +326,11 @@ async function loadSettings() {
 
         for (const field of plugin.fields) {
           const fullKey = `${plugin.plugin_id}.${field.key}`;
+          if (field.field_type === 'secret') {
+            values[plugin.plugin_id][field.key] = '';
+            settingsProvenance.value[fullKey] = 'keyring';
+            continue;
+          }
           if (pluginData[field.key] !== undefined) {
             values[plugin.plugin_id][field.key] = pluginData[field.key] as ConfigPrimitive;
             settingsProvenance.value[fullKey] = "global";
@@ -317,6 +382,7 @@ async function saveSettings() {
       for (const field of plugin.fields) {
         if (props.scope === "global" && field.scope === "project_only") continue;
         if (props.scope === "project" && field.scope === "global_only") continue;
+        if (field.field_type === 'secret') continue;
         const val = settingsValues.value[plugin.plugin_id]?.[field.key];
         targetTable[field.key] = val !== undefined ? val : (field.default_value as ConfigPrimitive);
       }
@@ -571,7 +637,7 @@ const pairProblems = computed<string[]>(() => {
               <div v-if="coreStore.hostCapabilities" class="p-3 border border-[var(--border-color)] ui-surface-card flex flex-wrap items-center gap-3 text-[10px]">
                 <span>Runners: <strong>{{ coreStore.hostCapabilities.installed_runners.join(', ') || 'none detected' }}</strong></span>
                 <span class="text-[var(--dim-color)]">|</span>
-                <span>OpenDictate: <strong>{{ coreStore.hostCapabilities.opendictate_available ? 'Online' : 'Offline / Not installed' }}</strong></span>
+                <span>Keyring: <strong>{{ coreStore.hostCapabilities.keyring_available ? 'Available' : 'Missing secret-tool' }}</strong></span>
                 <span class="text-[var(--dim-color)]">|</span>
                 <span>Clipboard: <strong>{{ coreStore.hostCapabilities.clipboard_available ? 'Available' : 'Missing wl-paste/xclip' }}</strong></span>
                 <span class="text-[var(--dim-color)]">|</span>
@@ -665,6 +731,40 @@ const pairProblems = computed<string[]>(() => {
                       :model-value="String(settingsValues[plugin.plugin_id]?.[field.key] ?? field.default_value) as QuotaGaugeStyle"
                       @update:model-value="settingsValues[plugin.plugin_id][field.key] = $event"
                     />
+                  </div>
+
+                  <!-- Keyring-backed Secret -->
+                  <div v-else-if="field.field_type === 'secret'" class="flex flex-col gap-2 max-w-xl">
+                    <div class="flex items-center gap-2">
+                      <AppInput
+                        type="password"
+                        :model-value="secretDrafts[secretKey(plugin.plugin_id, field.key)] ?? ''"
+                        @update:model-value="secretDrafts[secretKey(plugin.plugin_id, field.key)] = String($event)"
+                        placeholder="Paste a new key..."
+                      />
+                      <button
+                        type="button"
+                        @click="saveSecret(plugin.plugin_id, field.key)"
+                        :disabled="isSavingSecret"
+                        class="h-8 px-2.5 text-[10px] font-mono font-bold uppercase tracking-wider border border-[var(--border-color)] bg-[var(--ui-bg-base)] text-[var(--fg-color)] hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] disabled:opacity-50 transition-colors cursor-pointer shrink-0"
+                      >
+                        {{ isSavingSecret ? '...' : 'Save' }}
+                      </button>
+                      <button
+                        type="button"
+                        @click="clearSecret(plugin.plugin_id, field.key)"
+                        :disabled="isSavingSecret"
+                        class="h-8 px-2.5 text-[10px] font-mono font-bold uppercase tracking-wider border border-[var(--border-color)] bg-[var(--ui-bg-base)] text-[var(--dim-color)] hover:border-[var(--status-error-color)] hover:text-[var(--status-error-color)] disabled:opacity-50 transition-colors cursor-pointer shrink-0"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                    <span class="text-[9px] text-[var(--dim-color)]">
+                      <template v-if="secretStatus?.configured">Configured in the OS keyring (hidden).</template>
+                      <template v-else>Not configured.</template>
+                      <template v-if="secretStatus && !secretStatus.keyringAvailable"> Secret Service (secret-tool) is unavailable.</template>
+                      <template v-if="secretStatus?.error"> {{ secretStatus.error }}</template>
+                    </span>
                   </div>
 
                   <!-- Boolean Toggle -->

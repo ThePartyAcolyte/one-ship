@@ -38,12 +38,6 @@ export const INTEGRATION_INSTALL_GUIDES: Record<string, IntegrationInstallGuide>
     sourceUrl: 'https://github.com/ThePartyAcolyte/one-ship/blob/main/packaging/udev/99-oneship-instruments.rules',
     sourceLabel: '99-oneship-instruments.rules',
   },
-  voice_controller: {
-    summary: 'OpenDictate — local Freedesktop D-Bus voice dictation daemon (faster-whisper).',
-    installCmd: './install.sh --features voice',
-    sourceUrl: 'https://github.com/ThePartyAcolyte/opendictate',
-    sourceLabel: 'ThePartyAcolyte/opendictate',
-  },
 };
 
 export interface RunnerInstallGuide {

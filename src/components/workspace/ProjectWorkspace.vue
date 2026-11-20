@@ -19,6 +19,7 @@ import { useWorkspaceLayoutStore, type WorkspaceTab } from '../../stores/workspa
 import { useProjectExplorerStore, type DocumentItem } from '../../stores/projectExplorerStore';
 import { useJournalStore } from '../../stores/journalStore';
 import { useCoreStore } from '../../stores/coreStore';
+import { useDictationStore } from '../../stores/dictationStore';
 import { useHardwarePreviewStore } from '../../stores/hardwarePreviewStore';
 import { useDocumentComments } from '../../composables/useDocumentComments';
 import { formatBytes, formatTime as formatDate } from '../../utils/format';
@@ -79,6 +80,7 @@ const emit = defineEmits<{
 }>();
 
 const coreStore = useCoreStore();
+const dictationStore = useDictationStore();
 const dialogueStore = useDialogueStore();
 const layoutStore = useWorkspaceLayoutStore();
 const explorerStore = useProjectExplorerStore();
@@ -3408,12 +3410,13 @@ onUnmounted(() => {
             />
 
             <div class="flex items-center justify-between gap-2 pt-1">
-              <AppTooltip v-if="coreStore.isOpendictateAvailable" text="Dictate review comment via OpenDictate">
+              <AppTooltip v-if="dictationStore.enabled && dictationStore.available" text="Dictate review note [Alt+V]">
                 <button
                   class="px-2 py-1 border transition-colors cursor-pointer flex items-center gap-1 text-[9px]"
                   :class="isRecordingVoice
                     ? 'border-[var(--status-error-color)] bg-[var(--status-error-bg)] text-[var(--status-error-color)] animate-pulse font-bold'
                     : 'border-[var(--border-color)] text-[var(--dim-color)] hover:border-[var(--accent-color)] hover:text-[var(--accent-color)]'"
+                  @mousedown.prevent
                   @click="toggleVoiceRecording"
                 >
                   <Mic :size="11" />
@@ -3430,7 +3433,7 @@ onUnmounted(() => {
                   Cancel
                 </button>
                 <button
-                  :disabled="!newCommentText.trim() || isSavingComment"
+                  :disabled="!newCommentText.trim() || isSavingComment || isRecordingVoice"
                   class="px-2.5 py-1 bg-[var(--accent-color)] text-[var(--bg-color)] font-bold uppercase text-[9px] cursor-pointer disabled:opacity-40"
                   @click="saveComment"
                 >

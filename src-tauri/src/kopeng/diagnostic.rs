@@ -123,7 +123,6 @@ pub struct DiagnosticState {
     pub gh_authenticated: bool,
     pub glab_installed: bool,
     pub glab_authenticated: bool,
-    pub opendictate_available: bool,
     pub package_manager: Option<String>,
     pub can_auto_install_tools: bool,
 }
@@ -146,8 +145,7 @@ pub struct IntegrationCapability {
 pub struct HostCapabilities {
     pub installed_runners: Vec<String>,
     pub integrations: Vec<IntegrationCapability>,
-    pub opendictate_available: bool,
-    pub gdbus_available: bool,
+    pub keyring_available: bool,
     pub omarchy_available: bool,
     pub hyprland_available: bool,
     pub clipboard_available: bool,
@@ -204,21 +202,6 @@ fn collect_diagnostics() -> Result<DiagnosticState, DiagnosticError> {
     let glab_authenticated = glab_installed
         && succeeds(&run_tool("glab", &["auth", "status"])?);
 
-    // The OpenDictate service answers `GetStatus` on the session bus; a missing `gdbus` means unavailable.
-    let timeout_seconds = crate::config::resolve_effective_u64(None, None, "system", "dbus_call_timeout_seconds");
-    let opendictate_available = succeeds(&run_tool("gdbus", &[
-        "call",
-        "--session",
-        "--timeout",
-        &timeout_seconds.to_string(),
-        "--dest",
-        "org.kirulab.OpenDictate",
-        "--object-path",
-        "/org/kirulab/OpenDictate",
-        "--method",
-        "org.kirulab.OpenDictate.GetStatus",
-    ])?);
-
     let pm = detect_host_package_manager();
     Ok(DiagnosticState {
         git_installed,
@@ -230,7 +213,6 @@ fn collect_diagnostics() -> Result<DiagnosticState, DiagnosticError> {
         gh_authenticated,
         glab_installed,
         glab_authenticated,
-        opendictate_available,
         package_manager: pm.map(|p| p.display_name().to_string()),
         can_auto_install_tools: pm.is_some() && crate::desktop::resolve_executable("pkexec").is_some(),
     })
@@ -243,31 +225,11 @@ pub async fn run_diagnostics() -> Result<DiagnosticState, DiagnosticError> {
         .await
         .map_err(|e| DiagnosticError::Task(e.to_string()))??;
     crate::logger::log("DEBUG", "diagnostic", &format!(
-        "run_diagnostics: git={}, gh={}, gh_auth={}, glab={}, glab_auth={}, opendictate={}",
+        "run_diagnostics: git={}, gh={}, gh_auth={}, glab={}, glab_auth={}",
         state.git_installed, state.gh_installed, state.gh_authenticated,
-        state.glab_installed, state.glab_authenticated, state.opendictate_available
+        state.glab_installed, state.glab_authenticated
     ));
     Ok(state)
-}
-
-fn check_opendictate_dbus_available() -> bool {
-    if crate::desktop::resolve_executable("gdbus").is_none() {
-        return false;
-    }
-    let timeout_seconds = crate::config::resolve_effective_u64(None, None, "system", "dbus_call_timeout_seconds");
-    run_tool("gdbus", &[
-        "call",
-        "--session",
-        "--timeout",
-        &timeout_seconds.to_string(),
-        "--dest",
-        "org.kirulab.OpenDictate",
-        "--object-path",
-        "/org/kirulab/OpenDictate",
-        "--method",
-        "org.kirulab.OpenDictate.GetStatus",
-    ])
-    .is_ok_and(|out| succeeds(&out))
 }
 
 fn integration_entry(
@@ -392,8 +354,7 @@ fn collect_host_capabilities() -> Result<HostCapabilities, DiagnosticError> {
         ),
     ];
 
-    let gdbus_available = crate::desktop::resolve_executable("gdbus").is_some();
-    let opendictate_available = check_opendictate_dbus_available();
+    let keyring_available = crate::secret_store::is_available();
     let omarchy_available = crate::theme::is_omarchy_available();
     let hyprland_available = crate::desktop::is_hyprland_session();
     let clipboard_available = crate::desktop::resolve_executable("wl-paste").is_some()
@@ -403,8 +364,7 @@ fn collect_host_capabilities() -> Result<HostCapabilities, DiagnosticError> {
     Ok(HostCapabilities {
         installed_runners,
         integrations,
-        opendictate_available,
-        gdbus_available,
+        keyring_available,
         omarchy_available,
         hyprland_available,
         clipboard_available,

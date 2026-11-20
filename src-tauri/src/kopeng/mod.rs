@@ -1,6 +1,5 @@
 pub mod diagnostic;
 pub mod git;
-pub mod opendictate;
 pub mod dna;
 pub mod errors;
 pub mod fs_tree;

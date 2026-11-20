@@ -1342,6 +1342,8 @@ impl UiStateManager {
                     .ok_or(UiStateError::ProjectNotFound { project_id })?;
                 let resolved_path =
                     resolve_and_validate_node_path(&registry_clone, hydrated, &node_path)?;
+                cache.global.active_project_id = Some(project_id);
+                cache.global.updated_at_seconds = now;
                 let entry = cache
                     .projects
                     .entry(project_id)

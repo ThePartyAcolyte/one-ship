@@ -5,7 +5,7 @@ export { useProjectExplorerStore } from './projectExplorerStore';
 export { useJournalStore } from './journalStore';
 export { useAgentMetricsStore } from './agentMetricsStore';
 export { useAccountStore } from './useAccountStore';
-export { useVoiceStore } from './voiceStore';
+export { useDictationStore } from './dictationStore';
 export { useProfilerStore } from './useProfilerStore';
 export { useElectronicsStore } from './electronicsStore';
 export { useHardwarePreviewStore } from './hardwarePreviewStore';

@@ -85,5 +85,4 @@ Before declaring ANY task complete or writing the closing `devlog/`, the agent M
 
 For full rules on each domain, read the corresponding reference before editing that subsystem:
 - **Detailed Design, Tiger Style, Concurrency, Frontend, Logging & Onboarding Rules:** [`docs/DESIGN_RULES.md`](docs/DESIGN_RULES.md)
-- **UI Design System & Mandatory Component Checklist:** [`docs/specs/13_design_system_and_ui_components.md`](docs/specs/13_design_system_and_ui_components.md) (§0 & §11)
-- **Active Audit & Post-Audit Findings:** [`docs/audit/audit_00_index.md`](docs/audit/audit_00_index.md) and [`docs/audit/post_audit_2026-11-19_findings.md`](docs/audit/post_audit_2026-11-19_findings.md)
+- **UI Design System & Mandatory Component Checklist:** [`docs/specs/07-ui/01-design-system-foundations.md`](docs/specs/07-ui/01-design-system-foundations.md), [`02-ui-component-library-and-recipes.md`](docs/specs/07-ui/02-ui-component-library-and-recipes.md), and [`03-workspace-chrome-and-panel-contracts.md`](docs/specs/07-ui/03-workspace-chrome-and-panel-contracts.md)

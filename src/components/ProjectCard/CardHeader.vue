@@ -228,7 +228,7 @@ const skillTooltip = computed(() => {
       </div>
     </div>
 
-    <!-- Título y Estado Git -->
+    <!-- Title and Git Status -->
     <div class="flex items-start justify-between gap-2">
       <div class="flex flex-col min-w-0">
         <div class="flex items-center gap-2 flex-wrap">
@@ -291,7 +291,7 @@ const skillTooltip = computed(() => {
           </template>
         </div>
         <div class="text-xs mt-1 flex gap-3 items-center">
-          <!-- Git Status con Doble Significación (clicable para gestionar ramas) -->
+          <!-- Dual-Signification Git Status (clickable to manage branches) -->
           <template v-if="project.has_git && project.git_status">
             <AppTooltip text="Manage Git branches" position="bottom">
               <button
@@ -311,7 +311,7 @@ const skillTooltip = computed(() => {
               </button>
             </AppTooltip>
 
-            <!-- Métricas Simbólicas -->
+            <!-- Symbolic Metrics -->
             <div class="flex items-center gap-2 text-[11px] font-mono">
               <AppTooltip v-if="project.git_status.modified_count > 0" text="Modified" position="top">
                 <span class="text-[var(--status-warn-color)] cursor-default">!{{ project.git_status.modified_count }}</span>
@@ -331,7 +331,7 @@ const skillTooltip = computed(() => {
               <span v-if="project.git_status.is_clean" class="text-[var(--dim-color)] opacity-60 text-[10px]">clean</span>
             </div>
 
-            <!-- Indicador de Escucha si está en Modo Voz -->
+            <!-- Listening indicator when Voice Mode is active -->
             <span v-if="activeListeningProjectId === project.id" class="text-[10px] text-[var(--accent-color)] animate-pulse font-bold">
               [LISTENING]
             </span>

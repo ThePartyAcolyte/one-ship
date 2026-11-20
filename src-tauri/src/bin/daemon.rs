@@ -38,6 +38,8 @@ async fn main() {
     }
 
     oneship_lib::logger::log_failure("daemon", "keyring account sync", oneship_lib::kopeng::accounts::check_and_register_keyring_account());
+    oneship_lib::logger::log_failure("daemon", "load Gemini API key from keyring", oneship_lib::config::init_gemini_api_key_cache().await);
+    oneship_lib::dictation::cleanup_stale_sessions().await;
 
     // The daemon is the only owner of processes and state (AGENTS.md §9.6): every background
     // loop runs here and reaches the app through `/api/events`.
@@ -49,7 +51,6 @@ async fn main() {
     oneship_lib::telemetry::spawn_continuous_profiler_loop(cancel_token.clone());
     oneship_lib::supervisor::spawn_agent_state_watcher(tx.clone(), cancel_token.clone());
     oneship_lib::kopeng::stats::spawn_quota_watcher(tx.clone(), cancel_token.clone());
-    oneship_lib::kopeng::opendictate::spawn_dbus_monitor(tx.clone(), cancel_token.clone());
     oneship_lib::kopeng::rea::spawn_rea_idle_reaper_loop(cancel_token.clone());
     oneship_lib::supervisor::spawn_rearm_worker();
 
@@ -80,6 +81,7 @@ async fn main() {
         }
 
         oneship_lib::supervisor::get_supervisor().stop_all_processes().await;
+        oneship_lib::dictation::shutdown().await;
         cancel_clone.cancel();
     });
 

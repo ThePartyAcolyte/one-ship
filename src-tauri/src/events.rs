@@ -28,17 +28,15 @@ pub const DAEMON_EVENT_TYPES: &[&str] = &[
     "agent-usage-update",
     "conversation-topic-switched",
     "desigma-file-changed",
+    "dictation-cancelled",
+    "dictation-finished",
+    "dictation-interim-text",
+    "dictation-state",
     "forge-inbox-updated",
     "init-flag-raised",
     "init-flag-resolved",
     "keyring-warmup-status",
     "new-account-detected",
-    "opendictate_interim_text",
-    "opendictate_session_cancelled",
-    "opendictate_session_finished",
-    "opendictate_session_released",
-    "opendictate_session_reserved",
-    "opendictate_session_started",
     "pcbcraft-file-changed",
     "project-files-changed",
     "project-milestones-updated",
@@ -206,28 +204,20 @@ impl DaemonEvent {
         Self::from_serializable("solidcraft-file-changed", payload)
     }
 
-    pub fn opendictate_session_started(payload: &crate::kopeng::opendictate::SessionStartedPayload) -> Self {
-        Self::from_serializable("opendictate_session_started", payload)
+    pub fn dictation_state(payload: &crate::dictation::DictationStatePayload) -> Self {
+        Self::from_serializable("dictation-state", payload)
     }
 
-    pub fn opendictate_interim_text(payload: &crate::kopeng::opendictate::InterimTextPayload) -> Self {
-        Self::from_serializable("opendictate_interim_text", payload)
+    pub fn dictation_interim_text(payload: &crate::dictation::DictationInterimPayload) -> Self {
+        Self::from_serializable("dictation-interim-text", payload)
     }
 
-    pub fn opendictate_session_finished(payload: &crate::kopeng::opendictate::SessionFinishedPayload) -> Self {
-        Self::from_serializable("opendictate_session_finished", payload)
+    pub fn dictation_finished(payload: &crate::dictation::DictationFinishedPayload) -> Self {
+        Self::from_serializable("dictation-finished", payload)
     }
 
-    pub fn opendictate_session_cancelled(payload: &crate::kopeng::opendictate::SessionCancelledPayload) -> Self {
-        Self::from_serializable("opendictate_session_cancelled", payload)
-    }
-
-    pub fn opendictate_session_released(payload: &crate::kopeng::opendictate::SessionCancelledPayload) -> Self {
-        Self::from_serializable("opendictate_session_released", payload)
-    }
-
-    pub fn opendictate_session_reserved(payload: &crate::kopeng::opendictate::SessionReservedPayload) -> Self {
-        Self::from_serializable("opendictate_session_reserved", payload)
+    pub fn dictation_cancelled(payload: &crate::dictation::DictationCancelledPayload) -> Self {
+        Self::from_serializable("dictation-cancelled", payload)
     }
 
     pub fn project_files_changed(payload: &ProjectFilesChangedPayload) -> Self {

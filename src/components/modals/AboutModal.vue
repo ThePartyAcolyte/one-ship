@@ -12,7 +12,7 @@ const emit = defineEmits<{
 }>();
 
 const coreStore = useCoreStore();
-const appVersion = '0.2.1';
+const appVersion = '0.2.2';
 
 function handleKeydown(e: KeyboardEvent) {
   if (props.show && e.key === 'Escape') {

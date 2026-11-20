@@ -23,22 +23,22 @@ This skill establishes the rules for delivering technical content, managing evol
 ## 2. Decision Matrix: How to Deliver Artifacts
 
 ```text
-                     ¿Qué tipo de contenido técnico necesitas entregar?
-                                             │
-             ┌───────────────────────────────┼───────────────────────────────┐
-             ▼                               ▼                               ▼
- [ Reporte puntual o estático ]    [ Plan de trabajo evolutivo ]   [ Especificación formal ]
- (ej. tabla de BD, diff puntual)   (ej. roadmap de refactor)       (ej. arquitectura, API)
-             │                               │                               │
-             ▼                               ▼                               ▼
- ┌──────────────────────┐        ┌──────────────────────┐        ┌──────────────────────┐
- │ ARTEFACTO EFÍMERO    │        │ SCRATCHPAD EN DISCO  │        │ DOCUMENTACIÓN FORMAL │
- │ • Envía el payload   │        │ • Escribe archivo en │        │ • Escribe archivo en │
- │   inline en          │        │   scratchpad/*.md    │        │   docs/*.md          │
- │   post_agent_response│        │ • Pasa la ruta en    │        │ • Pasa la ruta en    │
- │ • NO crees archivo   │        │   post_agent_response│        │   post_agent_response│
- │   en disco           │        │ • Edita en disco     │        │ • Versionado en Git  │
- └──────────────────────┘        └──────────────────────┘        └──────────────────────┘
+                  What kind of technical content do you need to deliver?
+                                              │
+             ┌────────────────────────────────┼────────────────────────────────┐
+             ▼                                ▼                                ▼
+ [ Point-in-time / static report ]  [ Evolving working plan ]      [ Formal specification ]
+ (e.g. DB table, one-off diff)      (e.g. refactor roadmap)        (e.g. architecture, API)
+             │                                │                                │
+             ▼                                ▼                                ▼
+ ┌───────────────────────┐          ┌───────────────────────┐      ┌───────────────────────┐
+ │ EPHEMERAL ARTIFACT    │          │ DISK SCRATCHPAD       │      │ PERMANENT DOCS        │
+ │ • Send payload inline │          │ • Write file under    │      │ • Write file under    │
+ │   in                  │          │   scratchpad/*.md     │      │   docs/*.md           │
+ │   post_agent_response │          │ • Pass path in        │      │ • Pass path in        │
+ │ • Do NOT create a     │          │   post_agent_response │      │   post_agent_response │
+ │   file on disk        │          │ • Edit iteratively    │      │ • Versioned in Git    │
+ └───────────────────────┘          └───────────────────────┘      └───────────────────────┘
 ```
 
 ---

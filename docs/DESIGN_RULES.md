@@ -20,7 +20,7 @@ This document holds the detailed engineering, UI/UX, concurrency, logging, and o
 ## 2. UI & Design Rules: Component Library, Visual Simplicity & Tooltips
 
 > [!IMPORTANT]
-> **Mandatory Design Guide (Spec 13 §0/§11):** Before implementing or modifying any visual element, read [`docs/specs/13_design_system_and_ui_components.md`](specs/13_design_system_and_ui_components.md) §0 (Agent Design Contract) and §11 (Agent Checklist and Anti-Patterns). Passing that checklist — tokens only, component reuse, full state coverage, targeted grep audit, spec and devlog updates — is part of the Definition of Done for every UI change.
+> **Mandatory Design Guide:** Before implementing or modifying any visual element, read [`Design System Foundations`](specs/07-ui/01-design-system-foundations.md), [`UI Component Library and Composition Recipes`](specs/07-ui/02-ui-component-library-and-recipes.md), and [`Workspace Chrome and Panel Contracts`](specs/07-ui/03-workspace-chrome-and-panel-contracts.md). Passing that checklist — tokens only, component reuse, full state coverage, targeted grep audit, spec and devlog updates — is part of the Definition of Done for every UI change.
 
 1. **Mandatory UI Component Library (`src/components/ui/`):**
    - Always use standardized components (`AppTooltip`, `AppSelect`, `AppInput`, `AppTextarea`, `AppToggle`, `SubtabBar`, `AppEmptyState`) instead of ad-hoc HTML/Tailwind form elements.

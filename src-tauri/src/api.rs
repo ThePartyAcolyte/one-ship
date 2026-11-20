@@ -21,10 +21,10 @@ use serde_json::Value;
 use ts_rs::TS;
 
 use crate::kopeng::{
-    accounts, desigma, diagnostic, documents, electronics, flag_resolver, forge, fs_tree, git, github, gitlab, initializer, manifest, migration, opendictate, pcbcraft, persona,
+    accounts, desigma, diagnostic, documents, electronics, flag_resolver, forge, fs_tree, git, github, gitlab, initializer, manifest, migration, pcbcraft, persona,
     profiler, project_mgmt, rea, resolution, runner, skill, snapshots, solidcraft, stats,
 };
-use crate::{config, conversation, db, logger, orchestrator, registry, semantic, supervisor, theme, ui_state, voice_controller};
+use crate::{config, conversation, db, dictation, logger, orchestrator, registry, semantic, supervisor, theme, ui_state, voice_controller};
 
 /// A domain error the operator API can return: an HTTP status (4xx for a request the caller can
 /// correct, 5xx for a failure of the daemon or of an external tool) and a stable
@@ -263,9 +263,14 @@ pub const API_COMMANDS: &[&str] = &[
     "list_agent_runners",
     // Desktop session
     "get_active_theme",
-    "reserve_voice_capture",
-    "cancel_voice_capture",
-    "get_opendictate_status",
+    "start_dictation",
+    "stop_dictation",
+    "cancel_dictation",
+    "get_dictation_status",
+    "set_dictation_auto_send",
+    "get_gemini_api_key_status",
+    "set_gemini_api_key",
+    "clear_gemini_api_key",
     // UI State Machine & Session Persistence (Spec 35)
     "get_ui_registry",
     "get_ui_state",
@@ -586,9 +591,14 @@ async fn dispatch(command: &str, args: Value) -> Response {
         "list_agent_runners" => blocking!(NoArgs, |_a| config::list_agent_runners()),
 
         "get_active_theme" => blocking!(NoArgs, |_a| theme::get_active_theme()),
-        "reserve_voice_capture" => blocking!(opendictate::VoiceReservationRequest, |a| Ok::<_, ApiCallError>(opendictate::reserve_voice_capture(a))),
-        "cancel_voice_capture" => blocking!(opendictate::CancelVoiceCaptureArgs, |a| Ok::<_, ApiCallError>(opendictate::cancel_voice_capture(a.session_id))),
-        "get_opendictate_status" => blocking!(NoArgs, |_a| Ok::<_, ApiCallError>(opendictate::get_opendictate_status())),
+        "start_dictation" => call!(NoArgs, |_a| dictation::start_dictation()),
+        "stop_dictation" => call!(dictation::DictationSessionArgs, |a| dictation::stop_dictation(a)),
+        "cancel_dictation" => call!(dictation::DictationSessionArgs, |a| dictation::cancel_dictation(a)),
+        "get_dictation_status" => blocking!(NoArgs, |_a| Ok::<_, ApiCallError>(dictation::get_dictation_status())),
+        "set_dictation_auto_send" => blocking!(config::SetDictationAutoSendArgs, |a| config::set_dictation_auto_send(a)),
+        "get_gemini_api_key_status" => blocking!(NoArgs, |_a| Ok::<_, ApiCallError>(config::get_gemini_api_key_status())),
+        "set_gemini_api_key" => call!(config::SetGeminiApiKeyArgs, |a| config::set_gemini_api_key(a)),
+        "clear_gemini_api_key" => call!(NoArgs, |_a| config::clear_gemini_api_key()),
 
         "init_git_repo" => call!(ProjectIdArgs, |a| git::init_git_repo(a.project_id)),
         "get_vcs_actions" => call!(ProjectIdArgs, |a| git::get_vcs_actions(a.project_id)),

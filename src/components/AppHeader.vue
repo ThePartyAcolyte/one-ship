@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import {
+  AudioLines,
   Mic,
   Settings,
   History,
@@ -20,6 +21,7 @@ import {
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import type { DiagnosticState } from '../types';
 import { useCoreStore, type SystemTelemetryData } from '../stores/coreStore';
+import { useDictationStore } from '../stores/dictationStore';
 import {
   readVoiceWaveform,
   useVoiceControllerStore,
@@ -52,6 +54,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const coreStore = useCoreStore();
 const voiceController = useVoiceControllerStore();
+const dictation = useDictationStore();
 
 const headerSearchQuery = ref('');
 const isAppMenuOpen = ref(false);
@@ -141,6 +144,10 @@ async function toggleGlobalVoiceController(nextEnabled: boolean) {
   }
 }
 
+async function toggleDictationAutoSend() {
+  await dictation.setAutoSend(!dictation.autoSend);
+}
+
 function handleDocumentClick(e: MouseEvent) {
   if (!isAppMenuOpen.value) return;
   const target = e.target as Node | null;
@@ -189,6 +196,13 @@ const systemHealthSummary = computed(() => {
 });
 
 const voiceTooltip = computed(() => {
+  if (dictation.state === 'error' && dictation.lastError) {
+    return `Dictation error: ${dictation.lastError}`;
+  }
+  if (dictation.activeSessionId) {
+    if (dictation.state === 'processing') return 'Finalizing dictation...';
+    return 'Dictating into the focused field (Alt+V to stop, Alt+Backspace to cancel)';
+  }
   if (!voiceController.enabled) return 'Global Voice Controller Disabled';
   if (!voiceController.configured) return 'Voice Controller: Set Google AI Studio API Key in Settings';
   if (voiceController.lastError && voiceController.controllerState === 'error') {
@@ -204,12 +218,13 @@ const voiceTooltip = computed(() => {
     case 'speaking':
       return 'Speaking (Alt+V to interrupt)';
     default:
-      return 'Press Alt+V to Talk (Ship Brain)';
+      return 'Alt+V: dictate in a text field, or talk to the Ship Brain outside one';
   }
 });
 
 const isVoiceExpanded = computed(() => {
   return (
+    dictation.activeSessionId !== null ||
     voiceController.isPttHeld ||
     voiceController.controllerState === 'connecting' ||
     voiceController.controllerState === 'listening' ||
@@ -219,6 +234,9 @@ const isVoiceExpanded = computed(() => {
 });
 
 const voiceBadgeLabel = computed(() => {
+  if (dictation.activeSessionId) {
+    return dictation.state === 'processing' ? 'WAIT' : 'DICT';
+  }
   if (voiceController.isPttHeld || voiceController.controllerState === 'listening') return 'REC';
   switch (voiceController.controllerState) {
     case 'connecting':
@@ -367,6 +385,20 @@ const daemonError = computed(() => {
         <kbd class="ui-kbd">Ctrl+K</kbd>
       </div>
 
+      <!-- Dictation Auto-send Toggle -->
+      <AppTooltip :text="dictation.autoSend ? 'Auto-send dictated agent prompts: ON' : 'Auto-send dictated agent prompts: OFF'">
+        <button
+          type="button"
+          @click="toggleDictationAutoSend"
+          class="h-6 w-6 border transition-colors flex items-center justify-center cursor-pointer shrink-0 select-none"
+          :class="dictation.autoSend
+            ? 'border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] text-[var(--status-ok-color)]'
+            : 'border-[var(--border-color)] text-[var(--dim-color)] hover:text-[var(--fg-color)] hover:border-[var(--accent-color)]'"
+        >
+          <Mic :size="13" />
+        </button>
+      </AppTooltip>
+
       <!-- Global Voice Controller Status & Oscilloscope Waveform Pill (Spec 36, Alt+V) -->
       <AppTooltip :text="voiceTooltip">
         <button 
@@ -375,7 +407,7 @@ const daemonError = computed(() => {
           class="h-6 border transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer shrink-0 select-none overflow-hidden"
           :class="[voiceBtnClass, isVoiceExpanded ? 'w-36 px-1.5' : 'w-6']"
         >
-          <Mic :size="13" class="shrink-0" />
+          <AudioLines :size="13" class="shrink-0" />
           <span v-if="isVoiceExpanded && voiceBadgeLabel" class="text-[9px] font-bold tracking-wider shrink-0">
             {{ voiceBadgeLabel }}
           </span>

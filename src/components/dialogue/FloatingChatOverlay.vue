@@ -18,7 +18,7 @@ import { useProjectExplorerStore, type AttachedReviewFile } from '../../stores/p
 import { useAgentMetricsStore } from '../../stores/agentMetricsStore';
 import { useAccountStore } from '../../stores/useAccountStore';
 import { useCoreStore } from '../../stores/coreStore';
-import { useVoiceStore } from '../../stores/voiceStore';
+import { useDictationStore } from '../../stores/dictationStore';
 import { useRunnerCatalog } from '../../utils/runnerCatalog';
 import { formatTokenCount } from '../../utils/format';
 
@@ -37,7 +37,7 @@ const explorerStore = useProjectExplorerStore();
 const metricsStore = useAgentMetricsStore();
 const accountStore = useAccountStore();
 const coreStore = useCoreStore();
-const voiceStore = useVoiceStore();
+const dictationStore = useDictationStore();
 
 const messagesEnd = ref<HTMLElement | null>(null);
 const messagesContainerRef = ref<HTMLElement | null>(null);
@@ -62,22 +62,6 @@ const inputText = computed({
     }
   },
 });
-
-function onInputFocusOrClick() {
-  if (agentId.value && activeProject.value?.id) {
-    voiceStore.armReservationForAgent(
-      agentId.value,
-      activeProject.value.id,
-      activeProject.value.name,
-      `ONE-SHIP // ${activeAgentInfo.value?.role || agentId.value}`,
-      activeProjectPath.value
-    );
-  }
-}
-
-function onInputBlur() {
-  voiceStore.cancelIfIdle();
-}
 
 const activeAgentInfo = computed(() => {
   if (!agentId.value) return null;
@@ -117,30 +101,38 @@ const currentLiveStep = computed(() => {
 });
 
 const voiceMicClasses = computed(() => {
-  const status = voiceStore.getMicStatus(agentId.value, activeProjectPath.value);
-  if (status === 'recording') {
+  if (dictationStore.isActiveFor('chat')) {
     return 'text-[var(--status-error-color,#f43f5e)] opacity-100 animate-pulse';
   }
-  if (status === 'reserved') {
-    return 'text-[var(--accent-color)] opacity-90 animate-pulse';
-  }
-  if (status === 'busy') {
-    return 'text-[var(--status-warn-color,#eab308)] opacity-60';
+  if (dictationStore.state === 'processing') {
+    return 'text-[var(--accent-color)] opacity-80 animate-pulse';
   }
   return 'text-[var(--dim-color)] opacity-25 hover:opacity-75';
 });
 
 const voiceMicTooltip = computed(() => {
-  const status = voiceStore.getMicStatus(agentId.value, activeProjectPath.value);
-  const autoSendSuffix = voiceStore.isAutoSendEnabled ? ' [Auto-send]' : '';
-  if (status === 'recording') return `Recording voice...${autoSendSuffix}`;
-  if (status === 'reserved') return `Microphone armed${autoSendSuffix}`;
-  if (status === 'busy') return `OpenDictate busy`;
-  return `Voice dictation${autoSendSuffix}`;
+  const autoSendSuffix = dictationStore.autoSend ? ' [Auto-send]' : '';
+  if (dictationStore.isActiveFor('chat')) return `Recording voice...${autoSendSuffix}`;
+  if (dictationStore.state === 'processing') return 'Finalizing dictation...';
+  if (!dictationStore.configured) return 'Set Google AI Studio API Key in Settings';
+  if (!dictationStore.available) return 'PipeWire audio utilities (pw-record) are not available';
+  return `Dictate into the prompt [Alt+V]${autoSendSuffix}`;
 });
 
-function onMicClick() {
-  onInputFocusOrClick();
+async function onMicClick() {
+  if (dictationStore.isActiveFor('chat')) {
+    await dictationStore.stop();
+    return;
+  }
+  textareaRef.value?.focus();
+  const element = document.activeElement;
+  if (element instanceof HTMLTextAreaElement || element instanceof HTMLInputElement) {
+    await dictationStore.startDom('chat', element, {
+      kind: 'chat',
+      agentId: agentId.value,
+      projectPath: activeProjectPath.value,
+    });
+  }
 }
 
 const isWorking = computed(() => {
@@ -1743,20 +1735,18 @@ onUnmounted(() => {
               class="flex-1 resize-none text-xs font-mono pr-8 overflow-x-hidden break-words"
               @keydown="onKeydown"
               @paste="handlePaste"
-              @click="onInputFocusOrClick"
-              @focus="onInputFocusOrClick"
-              @blur="onInputBlur"
             />
 
             <!-- Microphone Status Indicator (Symbol-only, Pinned to Bottom-Right) -->
             <AppTooltip
-              v-if="coreStore.isOpendictateAvailable || voiceStore.isRecording"
+              v-if="dictationStore.enabled && dictationStore.available"
               :text="voiceMicTooltip"
               class="absolute right-2.5 bottom-2.5"
             >
               <div
                 class="flex items-center justify-center cursor-pointer select-none transition-colors"
                 :class="voiceMicClasses"
+                @mousedown.prevent
                 @click="onMicClick"
               >
                 <Mic :size="13" />

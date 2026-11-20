@@ -7,7 +7,7 @@ description: Review UI specifications and components to translate titles, action
 This workflow guides the Language Expert Agent in evaluating new UI texts, applying the Cinturonero translation boundaries, consulting the linguistic database, and generating 3-tier translations in `src/i18n.ts`.
 
 ## Prerequisites & Resources
-- Reference Spec: `docs/specs/08_cinturonero_translator_protocol.md`
+- Reference Spec: `docs/specs/07-ui/06-localization-and-belta-language.md`
 - Database: `docs/tekidok_lang_belta.json`
 - Search CLI: `scripts/belta_search.py`
 - Localization File: `src/i18n.ts`

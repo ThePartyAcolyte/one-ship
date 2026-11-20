@@ -283,6 +283,15 @@ pub fn get_all_plugin_schemas() -> Vec<PluginConfigSchema> {
                     scope: "global_only".into(),
                 },
                 ConfigFieldSchema {
+                    key: "keyring_timeout_seconds".into(),
+                    label: "OS Keyring Timeout (s)".into(),
+                    field_type: "number".into(),
+                    default_value: serde_json::json!(30),
+                    options: None,
+                    description: "Maximum time the daemon waits for a Secret Service lookup, store or clear operation before reporting a keyring error.".into(),
+                    scope: "global_only".into(),
+                },
+                ConfigFieldSchema {
                     key: "webkit_renderer_mode".into(),
                     label: "WebKitGTK Renderer Mode".into(),
                     field_type: "select_enum".into(),
@@ -1439,10 +1448,10 @@ pub fn get_all_plugin_schemas() -> Vec<PluginConfigSchema> {
                 ConfigFieldSchema {
                     key: "gemini_api_key".into(),
                     label: "Google AI Studio API Key".into(),
-                    field_type: "string".into(),
+                    field_type: "secret".into(),
                     default_value: serde_json::json!(""),
                     options: None,
-                    description: "API Key from Google AI Studio used by oneship-daemon for BidiGenerateContent Live sessions.".into(),
+                    description: "API Key from Google AI Studio used by oneship-daemon for BidiGenerateContent Live sessions. Stored in the OS keyring; never written to config.toml or sent to the interface.".into(),
                     scope: "global_only".into(),
                 },
                 ConfigFieldSchema {
@@ -1497,6 +1506,121 @@ pub fn get_all_plugin_schemas() -> Vec<PluginConfigSchema> {
                     default_value: serde_json::json!(6144),
                     options: None,
                     description: "Non-truncating WARN log threshold in bytes for serialized toolResponse payloads returned to Gemini Live.".into(),
+                    scope: "global_only".into(),
+                },
+            ],
+        },
+        PluginConfigSchema {
+            plugin_id: "dictation".into(),
+            plugin_name: "Dictation (Gemini Live)".into(),
+            agent_pairs: Vec::new(),
+            fields: vec![
+                ConfigFieldSchema {
+                    key: "enabled".into(),
+                    label: "Enable Native Dictation".into(),
+                    field_type: "boolean".into(),
+                    default_value: serde_json::json!(true),
+                    options: None,
+                    description: "Enables Gemini Live speech-to-text dictation into ONE-SHIP text fields.".into(),
+                    scope: "global_only".into(),
+                },
+                ConfigFieldSchema {
+                    key: "mode".into(),
+                    label: "Transcription Mode".into(),
+                    field_type: "select_enum".into(),
+                    default_value: serde_json::json!("smart"),
+                    options: Some(vec!["smart".into(), "verbatim".into()]),
+                    description: "'smart' uses the transcription model's native punctuation, formatting and disfluency removal. 'verbatim' keeps the literal acoustic transcript. Neither mode runs a second LLM cleanup pass.".into(),
+                    scope: "global_only".into(),
+                },
+                ConfigFieldSchema {
+                    key: "auto_send".into(),
+                    label: "Auto-send Dictated Prompts".into(),
+                    field_type: "boolean".into(),
+                    default_value: serde_json::json!(true),
+                    options: None,
+                    description: "Submits the final transcript automatically when dictation targets an agent chat prompt. Other text fields are never submitted.".into(),
+                    scope: "global_only".into(),
+                },
+                ConfigFieldSchema {
+                    key: "speech_energy_threshold".into(),
+                    label: "Speech Energy Threshold".into(),
+                    field_type: "number".into(),
+                    default_value: serde_json::json!(0.03),
+                    options: None,
+                    description: "Normalized RMS threshold used by the client-side VAD to distinguish speech from silence for watchdog and rollover decisions.".into(),
+                    scope: "global_only".into(),
+                },
+                ConfigFieldSchema {
+                    key: "rollover_min_session_seconds".into(),
+                    label: "Rollover Minimum Session Age (s)".into(),
+                    field_type: "number".into(),
+                    default_value: serde_json::json!(90),
+                    options: None,
+                    description: "Minimum Live session age before a silence window may trigger a proactive rollover. This is not a dictation time limit.".into(),
+                    scope: "global_only".into(),
+                },
+                ConfigFieldSchema {
+                    key: "rollover_silence_ms".into(),
+                    label: "Rollover Silence Window (ms)".into(),
+                    field_type: "number".into(),
+                    default_value: serde_json::json!(800),
+                    options: None,
+                    description: "Continuous silence required, together with the minimum session age, before proactively opening a fresh Live session.".into(),
+                    scope: "global_only".into(),
+                },
+                ConfigFieldSchema {
+                    key: "rollover_finalize_timeout_seconds".into(),
+                    label: "Rollover Finalization Wait (s)".into(),
+                    field_type: "number".into(),
+                    default_value: serde_json::json!(5),
+                    options: None,
+                    description: "Network wait for the current Live session to confirm its final segment during a proactive rollover. Unconfirmed audio is replayed, never discarded.".into(),
+                    scope: "global_only".into(),
+                },
+                ConfigFieldSchema {
+                    key: "watchdog_silence_seconds".into(),
+                    label: "Speech Stall Watchdog (s)".into(),
+                    field_type: "number".into(),
+                    default_value: serde_json::json!(10),
+                    options: None,
+                    description: "Reconnects the Live session when recent speech produced no transcription for this many seconds.".into(),
+                    scope: "global_only".into(),
+                },
+                ConfigFieldSchema {
+                    key: "finalize_timeout_seconds".into(),
+                    label: "Stop Finalization Wait (s)".into(),
+                    field_type: "number".into(),
+                    default_value: serde_json::json!(120),
+                    options: None,
+                    description: "Network wait for the final Live transcription after the user stops dictating. A timeout never deletes recorded audio.".into(),
+                    scope: "global_only".into(),
+                },
+                ConfigFieldSchema {
+                    key: "reconnect_attempts_count".into(),
+                    label: "Live Reconnect Attempts".into(),
+                    field_type: "number".into(),
+                    default_value: serde_json::json!(5),
+                    options: None,
+                    description: "Maximum reconnect attempts per Live incident before reporting an error and preserving the session audio file for recovery.".into(),
+                    scope: "global_only".into(),
+                },
+                ConfigFieldSchema {
+                    key: "recovery_min_interval_seconds".into(),
+                    label: "Minimum Recovery Interval (s)".into(),
+                    field_type: "number".into(),
+                    default_value: serde_json::json!(5),
+                    options: None,
+                    description: "Cooldown between consecutive Live recovery attempts so a persistent server failure does not produce a reconnect storm.".into(),
+                    scope: "global_only".into(),
+                },
+                ConfigFieldSchema {
+                    key: "stale_audio_retention_hours".into(),
+                    label: "Stale Dictation Audio Retention (h)".into(),
+                    field_type: "number".into(),
+                    default_value: serde_json::json!(24),
+                    options: None,
+                    description: "How long unrecovered dictation PCM files are kept in the state directory before startup cleanup removes them.".into(),
                     scope: "global_only".into(),
                 },
             ],
@@ -1738,7 +1862,7 @@ fn value_matches_type(value: &toml::Value, field: &ConfigFieldSchema) -> bool {
         "boolean" => value.is_bool(),
         "number" => value.is_integer() || value.is_float(),
         // Runner/model/effort values are checked as a unit against the manifests (`agent_pair_problems`).
-        "string" | "project_agent" | "runner" | "runner_model" | "runner_effort" => value.is_str(),
+        "string" | "project_agent" | "runner" | "runner_model" | "runner_effort" | "secret" => value.is_str(),
         "select_enum" => value
             .as_str()
             .is_some_and(|s| field.options.as_ref().is_none_or(|opts| opts.iter().any(|o| o == s))),
@@ -2513,10 +2637,18 @@ pub fn get_plugin_schemas() -> Vec<PluginConfigSchema> {
     get_all_plugin_schemas()
 }
 
-/// Daemon command `get_global_config`: `config.toml` as JSON.
+/// Daemon command `get_global_config`: `config.toml` as JSON, with keyring-backed secrets removed.
 pub fn get_global_config() -> serde_json::Value {
     let val = load_global_config();
-    toml_to_json(&val)
+    let mut json = toml_to_json(&val);
+    if let Some(voice) = json
+        .get_mut("plugins")
+        .and_then(|p| p.get_mut("voice_controller"))
+        .and_then(|v| v.as_object_mut())
+    {
+        voice.remove("gemini_api_key");
+    }
+    json
 }
 
 /// Valid prebuilt Gemini Live voice names.
@@ -2679,23 +2811,7 @@ pub fn get_voice_controller_config() -> VoiceControllerConfig {
         },
     };
 
-    let gemini_api_key = match section.and_then(|s| s.get("gemini_api_key")) {
-        None => None,
-        Some(v) => match v.as_str() {
-            Some(s) => {
-                let trimmed = s.trim();
-                if trimmed.is_empty() {
-                    None
-                } else {
-                    Some(trimmed.to_string())
-                }
-            }
-            None => {
-                warnings.push("gemini_api_key must be a string".to_string());
-                None
-            }
-        },
-    };
+    let gemini_api_key = get_gemini_api_key();
 
     let parse_positive = |key: &str, default_val: u64, min_val: u64, max_val: u64, warnings: &mut Vec<String>| -> u64 {
         match section.and_then(|s| s.get(key)) {
@@ -2752,6 +2868,412 @@ pub fn get_voice_controller_config() -> VoiceControllerConfig {
         context_compression_target_tokens,
         voice_tool_response_max_bytes,
     }
+}
+
+/// Global settings for native Gemini Live dictation.
+#[derive(Clone, Debug)]
+pub struct DictationConfig {
+    pub enabled: bool,
+    pub mode: crate::dictation::DictationMode,
+    pub auto_send: bool,
+    pub speech_energy_threshold: f32,
+    pub rollover_min_session_seconds: u64,
+    pub rollover_silence_ms: u64,
+    pub rollover_finalize_timeout_seconds: u64,
+    pub watchdog_silence_seconds: u64,
+    pub finalize_timeout_seconds: u64,
+    pub reconnect_attempts_count: u32,
+    pub recovery_min_interval_seconds: u64,
+    pub stale_audio_retention_hours: u64,
+}
+
+static DICTATION_CONFIG_LAST_WARN: Mutex<Option<String>> = Mutex::new(None);
+
+fn warn_dictation_config_once(warnings: &[String]) {
+    if warnings.is_empty() {
+        return;
+    }
+    let combined = warnings.join("; ");
+    let should_log = {
+        let mut last = DICTATION_CONFIG_LAST_WARN
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if last.as_deref() == Some(combined.as_str()) {
+            false
+        } else {
+            *last = Some(combined.clone());
+            true
+        }
+    };
+    if should_log {
+        crate::logger::log(
+            "WARN",
+            "config",
+            &format!("Invalid [plugins.dictation] config value(s): {combined}"),
+        );
+    }
+}
+
+/// Reads `[plugins.dictation]` from the global `config.toml`.
+pub fn get_dictation_config() -> DictationConfig {
+    let val = load_global_config();
+    let section = val
+        .get("plugins")
+        .and_then(|p| p.get("dictation"))
+        .and_then(|s| s.as_table());
+
+    let mut warnings: Vec<String> = Vec::new();
+
+    let enabled = match section.and_then(|s| s.get("enabled")) {
+        None => true,
+        Some(v) => match v.as_bool() {
+            Some(b) => b,
+            None => {
+                warnings.push("enabled must be boolean (using true)".to_string());
+                true
+            }
+        },
+    };
+
+    let mode = match section.and_then(|s| s.get("mode")) {
+        None => crate::dictation::DictationMode::Smart,
+        Some(v) => match v.as_str() {
+            Some("smart") => crate::dictation::DictationMode::Smart,
+            Some("verbatim") => crate::dictation::DictationMode::Verbatim,
+            Some(other) => {
+                warnings.push(format!("unsupported mode '{other}' (using 'smart')"));
+                crate::dictation::DictationMode::Smart
+            }
+            None => {
+                warnings.push("mode must be a string (using 'smart')".to_string());
+                crate::dictation::DictationMode::Smart
+            }
+        },
+    };
+
+    let auto_send = match section.and_then(|s| s.get("auto_send")) {
+        None => true,
+        Some(v) => match v.as_bool() {
+            Some(b) => b,
+            None => {
+                warnings.push("auto_send must be boolean (using true)".to_string());
+                true
+            }
+        },
+    };
+
+    let parse_number = |key: &str, default_val: u64, min_val: u64, max_val: u64, warnings: &mut Vec<String>| -> u64 {
+        match section.and_then(|s| s.get(key)) {
+            None => default_val,
+            Some(v) => match v.as_integer() {
+                Some(n) if n >= min_val as i64 && n <= max_val as i64 => n as u64,
+                Some(n) => {
+                    warnings.push(format!("{key}={n} out of range [{min_val}..={max_val}] (using {default_val})"));
+                    default_val
+                }
+                None => {
+                    warnings.push(format!("{key} must be an integer (using {default_val})"));
+                    default_val
+                }
+            },
+        }
+    };
+
+    let speech_energy_threshold = match section.and_then(|s| s.get("speech_energy_threshold")) {
+        None => 0.03,
+        Some(v) => match v.as_float().or_else(|| v.as_integer().map(|n| n as f64)) {
+            Some(n) if (0.005..=0.5).contains(&n) => n as f32,
+            Some(n) => {
+                warnings.push(format!(
+                    "speech_energy_threshold={n} out of range [0.005..=0.5] (using 0.03)"
+                ));
+                0.03
+            }
+            None => {
+                warnings.push("speech_energy_threshold must be a number (using 0.03)".to_string());
+                0.03
+            }
+        },
+    };
+
+    let rollover_min_session_seconds =
+        parse_number("rollover_min_session_seconds", 90, 30, 3600, &mut warnings);
+    let rollover_silence_ms = parse_number("rollover_silence_ms", 800, 200, 5000, &mut warnings);
+    let rollover_finalize_timeout_seconds =
+        parse_number("rollover_finalize_timeout_seconds", 5, 1, 60, &mut warnings);
+    let watchdog_silence_seconds =
+        parse_number("watchdog_silence_seconds", 10, 3, 120, &mut warnings);
+    let finalize_timeout_seconds =
+        parse_number("finalize_timeout_seconds", 120, 10, 600, &mut warnings);
+    let reconnect_attempts_count =
+        parse_number("reconnect_attempts_count", 5, 1, 20, &mut warnings) as u32;
+    let recovery_min_interval_seconds =
+        parse_number("recovery_min_interval_seconds", 5, 1, 60, &mut warnings);
+    let stale_audio_retention_hours =
+        parse_number("stale_audio_retention_hours", 24, 1, 720, &mut warnings);
+
+    warn_dictation_config_once(&warnings);
+
+    DictationConfig {
+        enabled,
+        mode,
+        auto_send,
+        speech_energy_threshold,
+        rollover_min_session_seconds,
+        rollover_silence_ms,
+        rollover_finalize_timeout_seconds,
+        watchdog_silence_seconds,
+        finalize_timeout_seconds,
+        reconnect_attempts_count,
+        recovery_min_interval_seconds,
+        stale_audio_retention_hours,
+    }
+}
+
+/// `[system].keyring_timeout_seconds`, bounded to a human-scale wait for a locked keyring.
+pub fn keyring_timeout_seconds() -> u64 {
+    resolve_effective_usize(None, None, "system", "keyring_timeout_seconds").clamp(5, 300) as u64
+}
+
+/// Status of the Gemini API key. The key itself is never serialized.
+#[derive(Serialize, Deserialize, Clone, Debug, ts_rs::TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct GeminiApiKeyStatus {
+    pub configured: bool,
+    pub keyring_available: bool,
+    pub error: Option<String>,
+}
+
+/// Arguments of `set_gemini_api_key`.
+#[derive(Deserialize, Debug, ts_rs::TS)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(export)]
+pub struct SetGeminiApiKeyArgs {
+    pub api_key: String,
+}
+
+/// Arguments of `set_dictation_auto_send`.
+#[derive(Deserialize, Debug, ts_rs::TS)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(export)]
+pub struct SetDictationAutoSendArgs {
+    pub enabled: bool,
+}
+
+static GEMINI_API_KEY_CACHE: RwLock<Option<String>> = RwLock::new(None);
+static GEMINI_API_KEY_ERROR: RwLock<Option<String>> = RwLock::new(None);
+
+fn set_gemini_api_key_cache(key: Option<String>, error: Option<String>) {
+    *GEMINI_API_KEY_CACHE
+        .write()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = key;
+    *GEMINI_API_KEY_ERROR
+        .write()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = error;
+}
+
+/// Cached Gemini API key. `None` means the key has not been configured (or the keyring is
+/// unavailable); callers surface a typed error instead of falling back to a plaintext file.
+pub fn get_gemini_api_key() -> Option<String> {
+    GEMINI_API_KEY_CACHE
+        .read()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .clone()
+}
+
+/// Last keyring error recorded while loading or storing the Gemini API key.
+pub fn gemini_api_key_error() -> Option<String> {
+    GEMINI_API_KEY_ERROR
+        .read()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .clone()
+}
+
+/// Reads the legacy plaintext key from `[plugins.voice_controller]`, if it is still present.
+fn read_legacy_gemini_api_key() -> Option<String> {
+    load_global_config()
+        .get("plugins")
+        .and_then(|p| p.get("voice_controller"))
+        .and_then(|s| s.get("gemini_api_key"))
+        .and_then(|v| v.as_str())
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+}
+
+/// Removes the `gemini_api_key` line from `[plugins.voice_controller]` while preserving the rest
+/// of the user's TOML formatting and comments. Returns `true` when a line was removed.
+fn remove_legacy_gemini_api_key_line(content: &str) -> (String, bool) {
+    let mut out: Vec<&str> = Vec::with_capacity(content.lines().count());
+    let mut in_voice_controller = false;
+    let mut removed = false;
+    for line in content.lines() {
+        let code = match line.split('#').next() {
+            Some(code) => code.trim(),
+            None => line.trim(),
+        };
+        if code.starts_with('[') && code.ends_with(']') && !code.starts_with("[[") {
+            in_voice_controller = code == "[plugins.voice_controller]";
+            out.push(line);
+            continue;
+        }
+        if in_voice_controller && code.starts_with("gemini_api_key") {
+            if let Some((key, _)) = code.split_once('=') {
+                if key.trim() == "gemini_api_key" {
+                    removed = true;
+                    continue;
+                }
+            }
+        }
+        out.push(line);
+    }
+    let mut updated = out.join("\n");
+    if content.ends_with('\n') {
+        updated.push('\n');
+    }
+    (updated, removed)
+}
+
+/// Loads the Gemini API key from the OS keyring into the daemon cache.
+///
+/// A legacy plaintext key found in `config.toml` is migrated exactly once: it is written to the
+/// keyring, removed from the TOML, and the new location is logged. If the keyring is unavailable,
+/// the legacy key stays available for the current daemon run, the error is surfaced to the UI and
+/// the next successful save replaces it.
+pub async fn init_gemini_api_key_cache() -> Result<(), ConfigError> {
+    if let Some(key) = read_legacy_gemini_api_key() {
+        match crate::secret_store::set(crate::secret_store::SecretKind::GeminiApiKey, &key).await {
+            Ok(()) => {
+                if let Err(e) = remove_legacy_gemini_api_key_from_config() {
+                    crate::logger::log(
+                        "WARN",
+                        "config",
+                        &format!("Migrated Gemini API key to the OS keyring but could not remove the legacy config line: {e}"),
+                    );
+                }
+                crate::logger::log(
+                    "INFO",
+                    "config",
+                    "Migrated the Gemini API key from config.toml to the OS keyring",
+                );
+                set_gemini_api_key_cache(Some(key), None);
+                return Ok(());
+            }
+            Err(e) => {
+                let message = format!("OS keyring unavailable while migrating the Gemini API key: {e}");
+                crate::logger::log("ERROR", "config", &message);
+                set_gemini_api_key_cache(Some(key), Some(message));
+                return Ok(());
+            }
+        }
+    }
+
+    match crate::secret_store::get(crate::secret_store::SecretKind::GeminiApiKey).await {
+        Ok(Some(key)) => set_gemini_api_key_cache(Some(key), None),
+        Ok(None) => set_gemini_api_key_cache(None, None),
+        Err(e) => {
+            let message = format!("OS keyring unavailable while reading the Gemini API key: {e}");
+            crate::logger::log("ERROR", "config", &message);
+            set_gemini_api_key_cache(None, Some(message));
+        }
+    }
+    Ok(())
+}
+
+fn remove_legacy_gemini_api_key_from_config() -> Result<(), ConfigError> {
+    let path = get_global_config_path()?;
+    let content = fs::read_to_string(&path).map_err(io_err(format!("Cannot read {}", path.display())))?;
+    let (updated, removed) = remove_legacy_gemini_api_key_line(&content);
+    if !removed {
+        return Ok(());
+    }
+    parse_config_document(&path, &updated)?;
+    fs::write(&path, &updated).map_err(io_err(format!("Cannot write {}", path.display())))?;
+    Ok(())
+}
+
+/// Daemon command `get_gemini_api_key_status`.
+pub fn get_gemini_api_key_status() -> GeminiApiKeyStatus {
+    GeminiApiKeyStatus {
+        configured: get_gemini_api_key().is_some(),
+        keyring_available: crate::secret_store::is_available(),
+        error: gemini_api_key_error(),
+    }
+}
+
+/// Daemon command `set_gemini_api_key`: writes the key only to the OS keyring.
+pub async fn set_gemini_api_key(args: SetGeminiApiKeyArgs) -> Result<GeminiApiKeyStatus, crate::secret_store::SecretStoreError> {
+    crate::secret_store::set(crate::secret_store::SecretKind::GeminiApiKey, &args.api_key).await?;
+    set_gemini_api_key_cache(Some(args.api_key.trim().to_string()), None);
+    if let Err(e) = remove_legacy_gemini_api_key_from_config() {
+        crate::logger::log(
+            "WARN",
+            "config",
+            &format!("Gemini API key saved to the keyring but the legacy config line could not be removed: {e}"),
+        );
+    }
+    let status = get_voice_controller_status_payload();
+    crate::supervisor::get_supervisor()
+        .emit_event(crate::events::DaemonEvent::voice_controller_state(&status));
+    Ok(get_gemini_api_key_status())
+}
+
+/// Daemon command `clear_gemini_api_key`.
+pub async fn clear_gemini_api_key() -> Result<GeminiApiKeyStatus, crate::secret_store::SecretStoreError> {
+    crate::secret_store::clear(crate::secret_store::SecretKind::GeminiApiKey).await?;
+    set_gemini_api_key_cache(None, None);
+    let status = get_voice_controller_status_payload();
+    crate::supervisor::get_supervisor()
+        .emit_event(crate::events::DaemonEvent::voice_controller_state(&status));
+    Ok(get_gemini_api_key_status())
+}
+
+fn get_voice_controller_status_payload() -> crate::voice_controller::VoiceControllerStatus {
+    crate::voice_controller::get_voice_controller_status()
+}
+
+/// Daemon command `set_dictation_auto_send`.
+pub fn set_dictation_auto_send(
+    args: SetDictationAutoSendArgs,
+) -> Result<crate::dictation::DictationStatus, ConfigError> {
+    let path = get_global_config_path()?;
+    let mut doc = read_global_config()?;
+    let root = doc
+        .as_table_mut()
+        .ok_or_else(|| invalid(&path, "config.toml root must be a table"))?;
+    let plugins = root
+        .entry("plugins".to_string())
+        .or_insert_with(|| toml::Value::Table(toml::map::Map::new()))
+        .as_table_mut()
+        .ok_or_else(|| invalid(&path, "[plugins] must be a table"))?;
+    let dictation = plugins
+        .entry("dictation".to_string())
+        .or_insert_with(|| toml::Value::Table(toml::map::Map::new()))
+        .as_table_mut()
+        .ok_or_else(|| invalid(&path, "[plugins.dictation] must be a table"))?;
+    dictation.insert(
+        "auto_send".to_string(),
+        toml::Value::Boolean(args.enabled),
+    );
+
+    let serialized = toml::to_string_pretty(&doc)
+        .map_err(|e| invalid(&path, format!("Failed to serialize config.toml: {e}")))?;
+    let validated = parse_config_document(&path, &serialized)?;
+    fs::write(&path, &serialized).map_err(io_err(format!("Cannot write {}", path.display())))?;
+    if let Ok(meta) = fs::metadata(&path) {
+        if let Ok(mtime) = meta.modified() {
+            *GLOBAL_CONFIG_CACHE
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner) = Some((mtime, validated));
+        }
+    }
+    crate::logger::log(
+        "INFO",
+        "config",
+        &format!("Set [plugins.dictation].auto_send = {}", args.enabled),
+    );
+    Ok(crate::dictation::get_dictation_status())
 }
 
 /// Daemon command `set_voice_controller_enabled`: atomically updates
@@ -2842,7 +3364,18 @@ pub fn set_default_projects_root_path(root_path: &str) -> Result<(), ConfigError
 /// daemon port to the runner MCP configs.
 pub fn save_global_config(config_toml: String) -> Result<(), ConfigError> {
     let path = get_global_config_path()?;
-    parse_config_document(&path, &config_toml)?;
+    let parsed = parse_config_document(&path, &config_toml)?;
+    if parsed
+        .get("plugins")
+        .and_then(|p| p.get("voice_controller"))
+        .and_then(|v| v.get("gemini_api_key"))
+        .is_some()
+    {
+        return Err(invalid(
+            &path,
+            "gemini_api_key is stored in the OS keyring and cannot be written to config.toml; use set_gemini_api_key",
+        ));
+    }
     fs::write(&path, &config_toml).map_err(io_err(format!("Cannot write {}", path.display())))?;
     crate::logger::log("INFO", "config", "Updated global config.toml");
 

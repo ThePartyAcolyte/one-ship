@@ -1,8 +1,7 @@
-import { ref, onMounted, onUnmounted, type ComputedRef } from 'vue';
-import { daemonCall } from '../utils/daemonClient';
-import { listenDaemonEvent } from '../utils/daemonEvents';
-import { reportAsyncFailure } from '../utils/reportAsyncFailure';
+import { ref, computed, onUnmounted, type ComputedRef } from 'vue';
 import { useProjectExplorerStore } from '../stores/projectExplorerStore';
+import { useDictationStore } from '../stores/dictationStore';
+import { createValueTarget } from '../utils/dictationTargets';
 import type { ProjectRecord } from '../types';
 
 export interface DisplayDocumentRef {
@@ -116,6 +115,7 @@ export function useDocumentComments(
   displayContent: ComputedRef<DisplayDocumentRef | null>,
 ) {
   const explorerStore = useProjectExplorerStore();
+  const dictationStore = useDictationStore();
 
   const showCommentPopover = ref(false);
   const popoverPosition = ref({ x: 0, y: 0 });
@@ -123,14 +123,10 @@ export function useDocumentComments(
   const selectedStartLine = ref(1);
   const selectedEndLine = ref(1);
   const newCommentText = ref('');
-  const isRecordingVoice = ref(false);
-  const activeVoiceSessionId = ref('');
+  const isRecordingVoice = computed(() => dictationStore.isActiveFor('comment'));
   const isSavingComment = ref(false);
   const showCommentsDrawer = ref(false);
   const contentContainerRef = ref<HTMLElement | null>(null);
-
-  let unlistenVoiceFinished: (() => void) | null = null;
-  let unlistenVoiceCancelled: (() => void) | null = null;
 
   function handleTextSelection(_event?: MouseEvent) {
     const selection = window.getSelection();
@@ -177,25 +173,19 @@ export function useDocumentComments(
     showCommentPopover.value = true;
   }
 
-  async function releaseVoiceReservation() {
-    const sessionId = activeVoiceSessionId.value;
-    isRecordingVoice.value = false;
-    activeVoiceSessionId.value = '';
-    if (sessionId) {
-      await daemonCall('cancel_voice_capture', { sessionId });
-    }
-  }
-
   function cancelComment() {
     showCommentPopover.value = false;
     selectedSnippet.value = '';
     newCommentText.value = '';
     if (isRecordingVoice.value) {
-      releaseVoiceReservation().catch(reportAsyncFailure);
+      dictationStore.cancel().catch((err: unknown) => {
+        console.warn('[useDocumentComments] dictation cancel failed:', err);
+      });
     }
   }
 
   async function saveComment() {
+    if (isRecordingVoice.value) return;
     if (!displayContent.value?.relPath || !newCommentText.value.trim() || !project.value?.id) return;
     isSavingComment.value = true;
     try {
@@ -227,31 +217,17 @@ export function useDocumentComments(
 
   async function toggleVoiceRecording() {
     if (isRecordingVoice.value) {
-      try {
-        await releaseVoiceReservation();
-      } catch (e: unknown) {
-        console.error('Cancel voice error:', e);
-      }
+      await dictationStore.stop();
       return;
     }
 
     if (!project.value?.id) return;
-    try {
-      isRecordingVoice.value = true;
-      const res = await daemonCall('reserve_voice_capture', {
-        sessionId: null,
-        agentId: null,
-        projectId: project.value.id,
-        projectName: project.value.name,
-        appName: `ONE-SHIP // ${project.value.name}`,
-        accentColor: null,
-        hideBubble: null,
-      });
-      activeVoiceSessionId.value = res.session_id;
-    } catch (err: unknown) {
-      console.error('Voice reservation error:', err);
-      isRecordingVoice.value = false;
-    }
+    await dictationStore.start(createValueTarget(
+      'comment',
+      { kind: 'comment' },
+      () => newCommentText.value,
+      (value) => { newCommentText.value = value; },
+    ));
   }
 
   function scrollToCommentLine(cmt: { start_line: number }) {
@@ -268,29 +244,11 @@ export function useDocumentComments(
     });
   }
 
-  onMounted(() => {
-    unlistenVoiceFinished = listenDaemonEvent('opendictate_session_finished', (event) => {
-      if (isRecordingVoice.value && event.payload?.text) {
-        const text = event.payload.text;
-        newCommentText.value = newCommentText.value
-          ? `${newCommentText.value} ${text}`
-          : text;
-        isRecordingVoice.value = false;
-      }
-    });
-
-    unlistenVoiceCancelled = listenDaemonEvent('opendictate_session_cancelled', () => {
-      if (isRecordingVoice.value) {
-        isRecordingVoice.value = false;
-      }
-    });
-  });
-
   onUnmounted(() => {
-    if (unlistenVoiceFinished) unlistenVoiceFinished();
-    if (unlistenVoiceCancelled) unlistenVoiceCancelled();
     if (isRecordingVoice.value) {
-      releaseVoiceReservation().catch(reportAsyncFailure);
+      dictationStore.cancel().catch((err: unknown) => {
+        console.warn('[useDocumentComments] dictation cancel on unmount failed:', err);
+      });
     }
   });
 
@@ -302,14 +260,12 @@ export function useDocumentComments(
     selectedEndLine,
     newCommentText,
     isRecordingVoice,
-    activeVoiceSessionId,
     isSavingComment,
     showCommentsDrawer,
     contentContainerRef,
     handleTextSelection,
     openCommentAt,
     cancelComment,
-    releaseVoiceReservation,
     saveComment,
     toggleVoiceRecording,
     scrollToCommentLine,

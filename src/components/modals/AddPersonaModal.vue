@@ -475,7 +475,7 @@ function handleSave() {
           <AppTextarea 
             v-model="rawDocs"
             :rows="2"
-            placeholder="e.g. docs/specs/01_service_orchestrator.md, docs/00_manifesto.md"
+            placeholder="e.g. docs/specs/03-projects/01-project-registry-and-service-orchestration.md, docs/00_manifesto.md"
           />
           <span class="text-[10px] text-[var(--dim-color)] opacity-60">
             Selected files will have their full text prepended into the agent's initial prompt.

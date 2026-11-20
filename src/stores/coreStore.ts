@@ -39,8 +39,6 @@ const DAEMON_EVENT_TYPES = [
   "ApprovalRequested",
   "AgentResponse",
   "AccountQuotaUpdated",
-  "opendictate_session_cancelled",
-  "opendictate_session_finished",
   "accounts-updated",
   "new-account-detected",
   "account-switched",
@@ -115,8 +113,8 @@ export const useCoreStore = defineStore('core', {
         return entry ? entry.available : true;
       };
     },
-    isOpendictateAvailable(state): boolean {
-      return state.hostCapabilities ? state.hostCapabilities.opendictate_available : false;
+    isKeyringAvailable(state): boolean {
+      return state.hostCapabilities ? state.hostCapabilities.keyring_available : false;
     },
     installedRunners(state): string[] | null {
       return state.hostCapabilities ? state.hostCapabilities.installed_runners : null;

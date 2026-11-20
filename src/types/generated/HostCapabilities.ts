@@ -4,4 +4,4 @@ import type { IntegrationCapability } from "./IntegrationCapability";
 /**
  * Host capability snapshot used to dynamically gate optional workspace tabs, settings, and runners.
  */
-export type HostCapabilities = { installed_runners: Array<string>, integrations: Array<IntegrationCapability>, opendictate_available: boolean, gdbus_available: boolean, omarchy_available: boolean, hyprland_available: boolean, clipboard_available: boolean, package_manager: string | null, };
+export type HostCapabilities = { installed_runners: Array<string>, integrations: Array<IntegrationCapability>, keyring_available: boolean, omarchy_available: boolean, hyprland_available: boolean, clipboard_available: boolean, package_manager: string | null, };
