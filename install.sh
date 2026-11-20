@@ -307,8 +307,8 @@ interactive_wizard() {
     if [[ "$key" == $'\x1b' ]]; then
       IFS= read -rsn2 -t 0.05 seq || true
       case "$seq" in
-        "[A") (( cursor > 0 )) && (( cursor-- )) || cursor=$(( count - 1 )) ;;
-        "[B") (( cursor < count - 1 )) && (( cursor++ )) || cursor=0 ;;
+        "[A") cursor=$(( (cursor - 1 + count) % count )) ;;
+        "[B") cursor=$(( (cursor + 1) % count )) ;;
         "")
           cleanup_tui
           trap - EXIT INT TERM
@@ -322,9 +322,9 @@ interactive_wizard() {
     elif [[ "$key" == " " ]]; then
       feat_selected[cursor]=$(( 1 - feat_selected[cursor] ))
     elif [[ "$key" == "k" || "$key" == "K" ]]; then
-      (( cursor > 0 )) && (( cursor-- )) || cursor=$(( count - 1 ))
+      cursor=$(( (cursor - 1 + count) % count ))
     elif [[ "$key" == "j" || "$key" == "J" ]]; then
-      (( cursor < count - 1 )) && (( cursor++ )) || cursor=0
+      cursor=$(( (cursor + 1) % count ))
     elif [[ "$key" == "a" || "$key" == "A" ]]; then
       local any_off=0
       for (( i = 0; i < count; i++ )); do
