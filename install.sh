@@ -256,18 +256,106 @@ interactive_wizard() {
     return
   fi
 
-  echo ""
-  echo "=== ONE-SHIP Interactive Feature Selection ==="
-  echo "Core IDE + oneship-daemon + systemd user unit are always installed."
-  echo ""
-  ask_yes_no "Enable RE Lab (REA CLI + reverse engineering package hints)?" "n" && FEAT_REA=1 || FEAT_REA=0
-  ask_yes_no "Enable Electronics Workbench (udev rules + ngspice / sigrok-cli)?" "n" && FEAT_ELECTRONICS=1 || FEAT_ELECTRONICS=0
-  ask_yes_no "Enable Design Editor (DE-SIGMA 'oneship-designer': detect or clone+build)?" "n" && FEAT_DESIGN=1 || FEAT_DESIGN=0
-  ask_yes_no "Enable EDA/PCB Workbench (PCBCraft: detect or clone+build)?" "n" && FEAT_PCB=1 || FEAT_PCB=0
-  ask_yes_no "Enable 3D CAD Integration (SolidCraft prebuilt binary check/install)?" "n" && FEAT_CAD=1 || FEAT_CAD=0
+  local -a feat_keys=(rea electronics design pcb cad)
+  local -a feat_labels=(
+    "RE Lab (REA CLI + reverse engineering package hints)"
+    "Electronics Workbench (udev rules + ngspice / sigrok-cli)"
+    "Design Editor (DE-SIGMA 'oneship-designer': detect or clone+build)"
+    "EDA/PCB Workbench (PCBCraft: detect or clone+build)"
+    "3D CAD Integration (SolidCraft prebuilt binary check/install)"
+  )
+  local -a feat_selected=(1 1 1 1 1)
+
   if (( IS_OMARCHY )); then
-    ask_yes_no "Install Production Omarchy Top Bar Widget (tech.kirulab.one-ship)?" "y" && FEAT_OMARCHY=1 || FEAT_OMARCHY=0
+    feat_keys+=(omarchy)
+    feat_labels+=("Omarchy Top Bar Widget (tech.kirulab.one-ship)")
+    feat_selected+=(1)
   fi
+
+  local count=${#feat_keys[@]}
+  local cursor=0
+  local rendered=0
+
+  cleanup_tui() {
+    printf '\033[?25h' >&2 || true
+  }
+  trap cleanup_tui EXIT INT TERM
+
+  printf '\033[?25l' >&2
+  echo "" >&2
+  echo "=== ONE-SHIP Feature Selection ===" >&2
+  echo "Core IDE + oneship-daemon + systemd user unit are always installed." >&2
+  echo "Controls: [Up/Down] Move  [Space] Toggle  [a] All/None  [Enter] Confirm  [q] Cancel" >&2
+  echo "" >&2
+
+  while true; do
+    if (( rendered )); then
+      printf '\033[%dA' "$count" >&2
+    fi
+    local i
+    for (( i = 0; i < count; i++ )); do
+      local mark="[ ]"
+      (( feat_selected[i] )) && mark="[x]"
+      local pointer="  "
+      (( i == cursor )) && pointer="> "
+      printf '\r\033[K%s%s %s\n' "$pointer" "$mark" "${feat_labels[i]}" >&2
+    done
+    rendered=1
+
+    local key="" seq=""
+    IFS= read -rsn1 key || { cleanup_tui; trap - EXIT INT TERM; exit 1; }
+    if [[ "$key" == $'\x1b' ]]; then
+      IFS= read -rsn2 -t 0.05 seq || true
+      case "$seq" in
+        "[A") (( cursor > 0 )) && (( cursor-- )) || cursor=$(( count - 1 )) ;;
+        "[B") (( cursor < count - 1 )) && (( cursor++ )) || cursor=0 ;;
+        "")
+          cleanup_tui
+          trap - EXIT INT TERM
+          echo "" >&2
+          log_info "Installation cancelled by user."
+          exit 0
+          ;;
+      esac
+    elif [[ "$key" == "" ]]; then
+      break
+    elif [[ "$key" == " " ]]; then
+      feat_selected[cursor]=$(( 1 - feat_selected[cursor] ))
+    elif [[ "$key" == "k" || "$key" == "K" ]]; then
+      (( cursor > 0 )) && (( cursor-- )) || cursor=$(( count - 1 ))
+    elif [[ "$key" == "j" || "$key" == "J" ]]; then
+      (( cursor < count - 1 )) && (( cursor++ )) || cursor=0
+    elif [[ "$key" == "a" || "$key" == "A" ]]; then
+      local any_off=0
+      for (( i = 0; i < count; i++ )); do
+        (( feat_selected[i] == 0 )) && { any_off=1; break; }
+      done
+      local target_val=$any_off
+      for (( i = 0; i < count; i++ )); do
+        feat_selected[i]=$target_val
+      done
+    elif [[ "$key" == "q" || "$key" == "Q" ]]; then
+      cleanup_tui
+      trap - EXIT INT TERM
+      echo "" >&2
+      log_info "Installation cancelled by user."
+      exit 0
+    fi
+  done
+
+  cleanup_tui
+  trap - EXIT INT TERM
+
+  for (( i = 0; i < count; i++ )); do
+    case "${feat_keys[i]}" in
+      rea)         FEAT_REA=${feat_selected[i]} ;;
+      electronics) FEAT_ELECTRONICS=${feat_selected[i]} ;;
+      design)      FEAT_DESIGN=${feat_selected[i]} ;;
+      pcb)         FEAT_PCB=${feat_selected[i]} ;;
+      cad)         FEAT_CAD=${feat_selected[i]} ;;
+      omarchy)     FEAT_OMARCHY=${feat_selected[i]} ;;
+    esac
+  done
 }
 
 install_system_packages() {
