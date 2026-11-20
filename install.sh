@@ -341,6 +341,41 @@ ensure_rust_toolchain() {
   (( DRY_RUN )) || exit 1
 }
 
+ensure_modern_nodejs() {
+  local node_ver="" node_major=0
+  if command -v node >/dev/null 2>&1; then
+    node_ver="$(node -v 2>/dev/null || true)"
+    node_major="${node_ver#v}"
+    node_major="${node_major%%.*}"
+  fi
+  if [[ "$node_major" =~ ^[0-9]+$ ]] && (( node_major >= 20 )); then
+    return 0
+  fi
+
+  if [[ "$PKG_MANAGER" == "apt-get" ]] && (( ! SKIP_DEPS )) && command -v curl >/dev/null 2>&1; then
+    log_warn "Detected Node.js '${node_ver:-missing}', but ONE-SHIP requires Node.js >= 20 (@tailwindcss/oxide / marked)."
+    if ask_yes_no "Install Node.js 22 LTS from NodeSource now?" "y"; then
+      if (( DRY_RUN )); then
+        log_info "[dry-run] Would install Node.js 22 LTS via NodeSource setup_22.x and apt-get install -y nodejs"
+        return 0
+      fi
+      if (( EUID == 0 )); then
+        curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+        apt-get install -y nodejs
+      elif [[ -n "$ELEVATE_CMD" ]]; then
+        "$ELEVATE_CMD" sh -c "curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt-get install -y nodejs"
+      else
+        log_err "Need root privileges (pkexec/sudo) to upgrade Node.js to >= 20."
+        exit 1
+      fi
+      return 0
+    fi
+  fi
+
+  log_err "Node.js >= 20 is required (found '${node_ver:-none}'). Install Node.js 20/22 LTS and re-run ./install.sh."
+  (( DRY_RUN )) || exit 1
+}
+
 build_and_install_core() {
   local bin_dir="$PREFIX/bin"
   local templates_dest="$PREFIX/share/one-ship/templates"
@@ -351,6 +386,7 @@ build_and_install_core() {
 
   install_base_toolchain_deps
   ensure_rust_toolchain
+  ensure_modern_nodejs
 
   if ! command -v protoc >/dev/null 2>&1; then
     log_err "Protobuf compiler ('protoc') not found on PATH (install 'protobuf-compiler' on Debian/Ubuntu/Fedora or 'protobuf' on Arch)."

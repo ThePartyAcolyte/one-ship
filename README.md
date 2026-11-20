@@ -121,7 +121,7 @@ sudo apt update && sudo apt install -y git curl
 # Arch / Omarchy:
 # sudo pacman -S --needed git curl
 
-# Install modern Rust toolchain:
+# Install modern Rust toolchain (and Node.js >= 20 is required; install.sh offers Node 22 LTS on Debian/Ubuntu/Mint if apt ships v18):
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 source "$HOME/.cargo/env"
 ```
