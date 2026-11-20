@@ -402,8 +402,9 @@ build_and_install_core() {
 
   if command -v systemctl >/dev/null 2>&1; then
     run_cmd systemctl --user daemon-reload
-    if ask_yes_no "Enable and start oneship-daemon.service now?" "y"; then
-      run_cmd systemctl --user enable --now oneship-daemon.service
+    if ask_yes_no "Enable and (re)start oneship-daemon.service now?" "y"; then
+      run_cmd systemctl --user enable oneship-daemon.service
+      run_cmd systemctl --user restart oneship-daemon.service
     fi
   fi
 

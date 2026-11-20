@@ -305,11 +305,11 @@ export const useCoreStore = defineStore('core', {
       const appBuildId = await invoke<string>("get_build_id_cmd");
       const response = await fetch(`${this.requireDaemonBaseUrl()}/api/build`);
       if (!response.ok) {
-        throw new Error(`Daemon predates build checks (HTTP ${response.status}); restart it with scripts/run_dev.sh`);
+        throw new Error(`Daemon predates build checks (HTTP ${response.status}); restart oneship-daemon.service or run scripts/run_dev.sh daemon`);
       }
       const daemon: { build_id: string } = await response.json();
       if (daemon.build_id !== appBuildId) {
-        throw new Error(`Daemon build ${daemon.build_id} differs from app build ${appBuildId}; restart it with scripts/run_dev.sh`);
+        throw new Error(`Daemon build ${daemon.build_id} differs from app build ${appBuildId}; restart the daemon service (systemctl --user restart oneship-daemon.service or scripts/run_dev.sh daemon)`);
       }
     },
     /** Restores the newest pending approval from SQLite, the single source of approvals. */

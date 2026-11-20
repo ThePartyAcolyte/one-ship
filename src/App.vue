@@ -35,6 +35,26 @@ import { emitUiEvent, onUiEvent } from './utils/uiEvents';
 
 const { locale } = useI18n();
 const coreStore = useCoreStore();
+
+type WindowResizeDirection = Parameters<ReturnType<typeof getCurrentWindow>['startResizeDragging']>[0];
+
+const showWindowControls = computed(() => !(coreStore.hostCapabilities?.hyprland_available ?? false));
+
+const WINDOW_RESIZE_EDGES: ReadonlyArray<{ direction: WindowResizeDirection; cls: string }> = [
+  { direction: 'North', cls: 'top-0 left-2 right-2 h-1 cursor-ns-resize' },
+  { direction: 'South', cls: 'bottom-0 left-2 right-2 h-1 cursor-ns-resize' },
+  { direction: 'West', cls: 'left-0 top-2 bottom-2 w-1 cursor-ew-resize' },
+  { direction: 'East', cls: 'right-0 top-2 bottom-2 w-1 cursor-ew-resize' },
+  { direction: 'NorthWest', cls: 'top-0 left-0 w-2 h-2 cursor-nwse-resize' },
+  { direction: 'NorthEast', cls: 'top-0 right-0 w-2 h-2 cursor-nesw-resize' },
+  { direction: 'SouthWest', cls: 'bottom-0 left-0 w-2 h-2 cursor-nesw-resize' },
+  { direction: 'SouthEast', cls: 'bottom-0 right-0 w-2 h-2 cursor-nwse-resize' },
+];
+
+function startWindowResize(direction: WindowResizeDirection, e: MouseEvent) {
+  if (!showWindowControls.value || e.button !== 0) return;
+  getCurrentWindow().startResizeDragging(direction).catch(reportAsyncFailure);
+}
 const dialogueStore = useDialogueStore();
 const layoutStore = useWorkspaceLayoutStore();
 const accountStore = useAccountStore();
@@ -671,7 +691,17 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="h-full w-full min-h-0 min-w-0 overflow-hidden bg-[var(--bg-color)] text-[var(--fg-color)] font-mono flex flex-col p-2 sm:p-3 selection:bg-[var(--accent-color)] selection:text-[var(--bg-color)]">
+  <div class="h-full w-full min-h-0 min-w-0 overflow-hidden bg-[var(--bg-color)] text-[var(--fg-color)] font-mono flex flex-col p-2 sm:p-3 selection:bg-[var(--accent-color)] selection:text-[var(--bg-color)] relative">
+    <!-- Frameless Window Resize Handles (non-Hyprland desktops) -->
+    <template v-if="showWindowControls">
+      <div
+        v-for="edge in WINDOW_RESIZE_EDGES"
+        :key="edge.direction"
+        class="fixed z-[9990]"
+        :class="edge.cls"
+        @mousedown="startWindowResize(edge.direction, $event)"
+      />
+    </template>
     
     <!-- Global Topbar (Machine Metrics & Unified Toolbar) -->
     <AppHeader 

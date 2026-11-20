@@ -12,7 +12,12 @@ import {
   ShieldCheck,
   AlertTriangle,
   Download,
+  Minus,
+  Square,
+  Copy,
+  X,
 } from '@lucide/vue';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import type { DiagnosticState } from '../types';
 import { useCoreStore, type SystemTelemetryData } from '../stores/coreStore';
 import {
@@ -51,6 +56,49 @@ const headerSearchQuery = ref('');
 const isAppMenuOpen = ref(false);
 const appMenuRef = ref<HTMLElement | null>(null);
 const isTogglingVoice = ref(false);
+const isWindowMaximized = ref(false);
+
+const showWindowControls = computed(() => !(coreStore.hostCapabilities?.hyprland_available ?? false));
+
+async function syncMaximizedState() {
+  try {
+    isWindowMaximized.value = await getCurrentWindow().isMaximized();
+  } catch (err) {
+    reportAsyncFailure('AppHeader.syncMaximizedState', err);
+  }
+}
+
+function isInteractiveHeaderTarget(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
+  return Boolean(el?.closest('button, input, a, [role="button"], .ui-search-box'));
+}
+
+function handleHeaderMouseDown(e: MouseEvent) {
+  if (!showWindowControls.value || e.button !== 0 || isInteractiveHeaderTarget(e.target)) return;
+  getCurrentWindow().startDragging().catch(reportAsyncFailure);
+}
+
+function handleHeaderDoubleClick(e: MouseEvent) {
+  if (!showWindowControls.value || isInteractiveHeaderTarget(e.target)) return;
+  void toggleWindowMaximize();
+}
+
+function minimizeWindow() {
+  getCurrentWindow().minimize().catch(reportAsyncFailure);
+}
+
+async function toggleWindowMaximize() {
+  try {
+    await getCurrentWindow().toggleMaximize();
+    await syncMaximizedState();
+  } catch (err) {
+    reportAsyncFailure('AppHeader.toggleWindowMaximize', err);
+  }
+}
+
+function closeWindow() {
+  getCurrentWindow().close().catch(reportAsyncFailure);
+}
 
 function handleHeaderSearchSubmit() {
   const q = headerSearchQuery.value;
@@ -108,6 +156,9 @@ function handleDocumentKeydown(e: KeyboardEvent) {
 onMounted(() => {
   document.addEventListener('click', handleDocumentClick);
   document.addEventListener('keydown', handleDocumentKeydown);
+  if (showWindowControls.value) {
+    void syncMaximizedState();
+  }
 });
 
 onUnmounted(() => {
@@ -265,7 +316,12 @@ const daemonError = computed(() => {
 </script>
 
 <template>
-  <header class="flex justify-between items-center border-b border-[var(--border-color)] pb-2.5 mb-2.5 text-xs uppercase shrink-0 relative gap-2 sm:gap-4">
+  <header
+    class="flex justify-between items-center border-b border-[var(--border-color)] pb-2.5 mb-2.5 text-xs uppercase shrink-0 relative gap-2 sm:gap-4"
+    :class="showWindowControls ? 'select-none' : ''"
+    @mousedown="handleHeaderMouseDown"
+    @dblclick="handleHeaderDoubleClick"
+  >
     
     <!-- ── LEFT: Brand & Primary View Switcher ─────────────────── -->
     <div class="flex items-center gap-2 sm:gap-3 shrink-0">
@@ -420,6 +476,31 @@ const daemonError = computed(() => {
             </button>
           </div>
         </div>
+      </div>
+
+      <!-- Custom Frameless Window Controls (floating Linux desktops; hidden on Hyprland) -->
+      <div v-if="showWindowControls" class="flex items-center gap-1 pl-1.5 ml-0.5 border-l border-[var(--border-color)]/60 shrink-0">
+        <AppTooltip text="Minimize">
+          <button type="button" @click="minimizeWindow" class="ui-icon-btn" aria-label="Minimize window">
+            <Minus :size="12" />
+          </button>
+        </AppTooltip>
+        <AppTooltip :text="isWindowMaximized ? 'Restore' : 'Maximize'">
+          <button type="button" @click="toggleWindowMaximize" class="ui-icon-btn" aria-label="Toggle maximize window">
+            <Copy v-if="isWindowMaximized" :size="11" />
+            <Square v-else :size="11" />
+          </button>
+        </AppTooltip>
+        <AppTooltip text="Close">
+          <button
+            type="button"
+            @click="closeWindow"
+            class="ui-icon-btn hover:!border-[var(--status-error-border)] hover:!text-[var(--status-error-color)]"
+            aria-label="Close window"
+          >
+            <X :size="12" />
+          </button>
+        </AppTooltip>
       </div>
     </div>
 
