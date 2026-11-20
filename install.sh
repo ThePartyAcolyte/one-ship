@@ -370,8 +370,8 @@ build_and_install_core() {
   fi
 
   if [[ ! -d "$SCRIPT_DIR/node_modules" ]]; then
-    log_info "Installing frontend dependencies (npm ci)..."
-    run_shell_dir "$SCRIPT_DIR" npm ci
+    log_info "Installing frontend dependencies (npm install --include=optional)..."
+    run_shell_dir "$SCRIPT_DIR" npm install --include=optional --no-audit --no-fund
   fi
 
   log_info "Building frontend bundle (npm run build)..."

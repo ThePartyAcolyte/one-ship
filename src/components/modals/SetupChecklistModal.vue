@@ -18,9 +18,11 @@ import type { DiagnosticState } from '../../types';
 import { useCoreStore } from '../../stores/coreStore';
 import { daemonCall } from '../../utils/daemonClient';
 import { AppInput, AppTooltip } from '../ui';
-import { INTEGRATION_INSTALL_GUIDES, RUNNER_INSTALL_GUIDES } from '../../utils/integrationGuides';
-
-export const ONBOARDING_DISMISSED_KEY = 'oneship-onboarding-dismissed-v1';
+import {
+  INTEGRATION_INSTALL_GUIDES,
+  ONBOARDING_DISMISSED_KEY,
+  RUNNER_INSTALL_GUIDES,
+} from '../../utils/integrationGuides';
 
 const props = defineProps<{
   show: boolean;

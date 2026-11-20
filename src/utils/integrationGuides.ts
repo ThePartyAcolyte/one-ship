@@ -1,3 +1,5 @@
+export const ONBOARDING_DISMISSED_KEY = 'oneship-onboarding-dismissed-v1';
+
 export interface IntegrationInstallGuide {
   summary: string;
   installCmd: string;

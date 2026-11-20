@@ -22,7 +22,8 @@ import SwitchConfirmationModal from './components/modals/SwitchConfirmationModal
 import ApprovalRequestModal from './components/modals/ApprovalRequestModal.vue';
 import OmnisearchModal from './components/modals/OmnisearchModal.vue';
 import AboutModal from './components/modals/AboutModal.vue';
-import SetupChecklistModal, { ONBOARDING_DISMISSED_KEY } from './components/modals/SetupChecklistModal.vue';
+import SetupChecklistModal from './components/modals/SetupChecklistModal.vue';
+import { ONBOARDING_DISMISSED_KEY } from './utils/integrationGuides';
 import RollingStatusLog from './components/floating/RollingStatusLog.vue';
 import ProjectWorkspace from './components/workspace/ProjectWorkspace.vue';
 import FloatingChatOverlay from './components/dialogue/FloatingChatOverlay.vue';
