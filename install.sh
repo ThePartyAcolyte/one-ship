@@ -344,7 +344,9 @@ ensure_rust_toolchain() {
 build_and_install_core() {
   local bin_dir="$PREFIX/bin"
   local templates_dest="$PREFIX/share/one-ship/templates"
-  local desktop_dir="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
+  local data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
+  local desktop_dir="$data_home/applications"
+  local icons_dir="$data_home/icons/hicolor"
   local systemd_user_dir="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 
   install_base_toolchain_deps
@@ -394,9 +396,21 @@ build_and_install_core() {
 
   if (( DRY_RUN )); then
     log_info "[dry-run] Would install $desktop_dir/one-ship.desktop (Exec=$bin_dir/one-ship-launch)"
+    log_info "[dry-run] Would install hicolor icons -> $icons_dir/{32x32,128x128,256x256,512x512}/apps/one-ship.png"
     log_info "[dry-run] Would install $systemd_user_dir/oneship-daemon.service (ExecStart=$bin_dir/oneship-daemon)"
   else
     sed "s|^Exec=.*$|Exec=$bin_dir/one-ship-launch|" "$SCRIPT_DIR/packaging/one-ship.desktop" > "$desktop_dir/one-ship.desktop"
+    install -d "$icons_dir/32x32/apps" "$icons_dir/128x128/apps" "$icons_dir/256x256/apps" "$icons_dir/512x512/apps"
+    install -m 0644 "$SCRIPT_DIR/src-tauri/icons/32x32.png" "$icons_dir/32x32/apps/one-ship.png"
+    install -m 0644 "$SCRIPT_DIR/src-tauri/icons/128x128.png" "$icons_dir/128x128/apps/one-ship.png"
+    install -m 0644 "$SCRIPT_DIR/src-tauri/icons/128x128@2x.png" "$icons_dir/256x256/apps/one-ship.png"
+    install -m 0644 "$SCRIPT_DIR/src-tauri/icons/icon.png" "$icons_dir/512x512/apps/one-ship.png"
+    if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+      gtk-update-icon-cache -f -t "$icons_dir" >/dev/null 2>&1 || true
+    fi
+    if command -v update-desktop-database >/dev/null 2>&1; then
+      update-desktop-database "$desktop_dir" >/dev/null 2>&1 || true
+    fi
     sed "s|^ExecStart=.*$|ExecStart=$bin_dir/oneship-daemon|" "$SCRIPT_DIR/packaging/systemd/oneship-daemon.service" > "$systemd_user_dir/oneship-daemon.service"
   fi
 
@@ -727,7 +741,9 @@ install_feature_omarchy() {
 uninstall_oneship() {
   local bin_dir="$PREFIX/bin"
   local templates_dir="$PREFIX/share/one-ship"
-  local desktop_file="${XDG_DATA_HOME:-$HOME/.local/share}/applications/one-ship.desktop"
+  local data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
+  local desktop_file="$data_home/applications/one-ship.desktop"
+  local icons_dir="$data_home/icons/hicolor"
   local service_file="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/oneship-daemon.service"
   local omarchy_plugin="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/plugins/tech.kirulab.one-ship"
 
@@ -735,7 +751,9 @@ uninstall_oneship() {
   if command -v systemctl >/dev/null 2>&1; then
     run_cmd systemctl --user disable --now oneship-daemon.service || true
   fi
-  run_cmd rm -f "$bin_dir/one-ship" "$bin_dir/oneship-daemon" "$bin_dir/one-ship-launch" "$desktop_file" "$service_file"
+  run_cmd rm -f "$bin_dir/one-ship" "$bin_dir/oneship-daemon" "$bin_dir/one-ship-launch" "$desktop_file" "$service_file" \
+    "$icons_dir/32x32/apps/one-ship.png" "$icons_dir/128x128/apps/one-ship.png" \
+    "$icons_dir/256x256/apps/one-ship.png" "$icons_dir/512x512/apps/one-ship.png"
   run_cmd rm -rf "$templates_dir"
   if [[ -L "$omarchy_plugin" ]]; then
     run_cmd rm -f "$omarchy_plugin"

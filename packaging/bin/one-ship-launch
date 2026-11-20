@@ -1,7 +1,16 @@
 #!/usr/bin/env bash
 # Production launcher for ONE-SHIP: ensures oneship-daemon is running and starts one-ship
-# with the Spec 12 §7.4 WebKitGTK startup retry (dmabuf -> shared_memory on early crash).
+# detached from any terminal (unless --foreground is passed) with WebKitGTK startup retry.
 set -u
+
+FOREGROUND=0
+ARGS=()
+for arg in "$@"; do
+  case "$arg" in
+    --foreground) FOREGROUND=1 ;;
+    *) ARGS+=("$arg") ;;
+  esac
+done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_BIN="${ONESHIP_APP_BIN:-$SCRIPT_DIR/one-ship}"
@@ -13,20 +22,37 @@ if [[ -z $APP_BIN || ! -x $APP_BIN ]]; then
   exit 1
 fi
 
-if command -v systemctl >/dev/null 2>&1 && systemctl --user list-unit-files oneship-daemon.service >/dev/null 2>&1; then
-  if ! systemctl --user is-active --quiet oneship-daemon.service; then
-    systemctl --user start oneship-daemon.service >/dev/null 2>&1 || true
+run_supervised() {
+  if command -v systemctl >/dev/null 2>&1 && systemctl --user list-unit-files oneship-daemon.service >/dev/null 2>&1; then
+    if ! systemctl --user is-active --quiet oneship-daemon.service; then
+      systemctl --user start oneship-daemon.service >/dev/null 2>&1 || true
+    fi
   fi
+
+  local start_epoch rc elapsed
+  start_epoch="$(date +%s)"
+  "$APP_BIN" "${ARGS[@]}"
+  rc=$?
+  elapsed=$(( $(date +%s) - start_epoch ))
+
+  if (( rc != 0 && elapsed < 5 )) && [[ -z ${WEBKIT_DMABUF_RENDERER_FORCE_SHM:-} ]] && [[ -z ${WEBKIT_DISABLE_DMABUF_RENDERER:-} ]]; then
+    echo "one-ship-launch: early exit ($rc after ${elapsed}s); retrying with WebKitGTK shared_memory mode" >&2
+    ONESHIP_WEBKIT_LAUNCHER_RETRY=1 WEBKIT_DMABUF_RENDERER_FORCE_SHM=1 exec "$APP_BIN" "${ARGS[@]}"
+  fi
+
+  exit "$rc"
+}
+
+if (( FOREGROUND )) || [[ -n ${ONESHIP_LAUNCH_DETACHED:-} ]]; then
+  run_supervised
 fi
 
-start_epoch="$(date +%s)"
-"$APP_BIN" "$@"
-rc=$?
-elapsed=$(( $(date +%s) - start_epoch ))
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/one-ship"
+mkdir -p "$STATE_DIR"
+LOG_FILE="$STATE_DIR/launcher.log"
 
-if (( rc != 0 && elapsed < 5 )) && [[ -z ${WEBKIT_DMABUF_RENDERER_FORCE_SHM:-} ]] && [[ -z ${WEBKIT_DISABLE_DMABUF_RENDERER:-} ]]; then
-  echo "one-ship-launch: early exit ($rc after ${elapsed}s); retrying with WebKitGTK shared_memory mode" >&2
-  ONESHIP_WEBKIT_LAUNCHER_RETRY=1 WEBKIT_DMABUF_RENDERER_FORCE_SHM=1 exec "$APP_BIN" "$@"
+if command -v setsid >/dev/null 2>&1; then
+  ONESHIP_LAUNCH_DETACHED=1 setsid "$0" "${ARGS[@]}" </dev/null >>"$LOG_FILE" 2>&1 &
+else
+  ONESHIP_LAUNCH_DETACHED=1 nohup "$0" "${ARGS[@]}" </dev/null >>"$LOG_FILE" 2>&1 &
 fi
-
-exit "$rc"
