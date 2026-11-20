@@ -315,17 +315,17 @@ install_base_toolchain_deps() {
   (( SKIP_DEPS )) && return 0
   case "$PKG_MANAGER" in
     pacman)
-      install_system_packages base-devel pkgconf openssl webkit2gtk-4.1 libayatana-appindicator librsvg protobuf git nodejs npm rust
+      install_system_packages base-devel pkgconf openssl webkit2gtk-4.1 libayatana-appindicator librsvg protobuf systemd-libs libusb git nodejs npm rust
       ;;
     apt-get)
-      install_system_packages build-essential pkg-config libssl-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev protobuf-compiler curl wget file libxdo-dev git nodejs npm
+      install_system_packages build-essential pkg-config libssl-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev protobuf-compiler libudev-dev libusb-1.0-0-dev curl wget file libxdo-dev git nodejs npm
       ;;
     dnf)
-      install_system_packages @development-tools pkgconf-pkg-config openssl-devel webkit2gtk4.1-devel libayatana-appindicator-gtk3-devel librsvg2-devel protobuf-compiler git nodejs npm
+      install_system_packages @development-tools pkgconf-pkg-config openssl-devel webkit2gtk4.1-devel libayatana-appindicator-gtk3-devel librsvg2-devel protobuf-compiler systemd-devel libusb1-devel git nodejs npm
       ;;
     zypper)
       install_system_packages -t pattern devel_basis
-      install_system_packages pkg-config libopenssl-devel webkit2gtk3-devel libayatana-appindicator3-devel librsvg-devel protobuf-devel git nodejs npm
+      install_system_packages pkg-config libopenssl-devel webkit2gtk3-devel libayatana-appindicator3-devel librsvg-devel protobuf-devel libudev-devel libusb-1_0-devel git nodejs npm
       ;;
     *)
       log_warn "Unsupported package manager; ensure Rust, Node/npm, pkg-config, OpenSSL, protoc (protobuf-compiler), and WebKitGTK 4.1 headers are installed."
