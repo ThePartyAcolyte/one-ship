@@ -12,7 +12,7 @@ import { AppTooltip, AppEmptyState } from '../ui';
 import { useMilestoneStore } from '../../stores/milestoneStore';
 import type { ProjectMilestoneSummary } from '../../types/generated/ProjectMilestoneSummary';
 
-const props = defineProps<{
+defineProps<{
   selectedMilestoneId: number | null;
   milestoneFilterId: number | null;
 }>();
@@ -192,9 +192,13 @@ function formatTokens(count: number): string {
     <!-- Empty State -->
     <AppEmptyState
       v-if="milestones.length === 0"
+      :icon="Flag"
       title="No milestones defined yet"
-      description="Create strategic milestones to structure architecture, deliverables, and emergent tasks."
-    />
+    >
+      <template #description>
+        Create strategic milestones to structure architecture, deliverables, and emergent tasks.
+      </template>
+    </AppEmptyState>
 
     <!-- Milestones Grid -->
     <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2.5">

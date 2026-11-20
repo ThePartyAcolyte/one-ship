@@ -387,7 +387,7 @@ onUnmounted(() => {
       <div class="p-3 space-y-2 flex-1">
         <!-- Tasks -->
         <template v-if="activeTab === 'tasks'">
-          <AppEmptyState v-if="detail.tasks.length === 0" title="No tasks assigned to this milestone" />
+          <AppEmptyState v-if="detail.tasks.length === 0" :icon="CheckSquare" title="No tasks assigned to this milestone" />
           <button
             v-for="b in detail.tasks"
             :key="b.task.id"
@@ -411,7 +411,7 @@ onUnmounted(() => {
 
         <!-- Minutes (Direct + Transitive) -->
         <template v-else-if="activeTab === 'minutes'">
-          <AppEmptyState v-if="detail.journalEntries.length === 0" title="No session minutes linked yet" />
+          <AppEmptyState v-if="detail.journalEntries.length === 0" :icon="BookOpen" title="No session minutes linked yet" />
           <div
             v-for="entry in detail.journalEntries"
             :key="entry.id ?? entry.created_at"
@@ -439,7 +439,7 @@ onUnmounted(() => {
 
         <!-- Aggregated TODOs -->
         <template v-else-if="activeTab === 'todos'">
-          <AppEmptyState v-if="detail.todos.length === 0" title="No TODOs linked via tasks" />
+          <AppEmptyState v-if="detail.todos.length === 0" :icon="ListTodo" title="No TODOs linked via tasks" />
           <div
             v-for="todo in detail.todos"
             :key="todo.id ?? todo.title"
@@ -469,7 +469,7 @@ onUnmounted(() => {
 
         <!-- Technical Debt -->
         <template v-else>
-          <AppEmptyState v-if="detail.techDebt.length === 0" title="No technical debt attributed to this milestone" />
+          <AppEmptyState v-if="detail.techDebt.length === 0" :icon="AlertTriangle" title="No technical debt attributed to this milestone" />
           <div
             v-for="debt in detail.techDebt"
             :key="debt.id ?? debt.title"

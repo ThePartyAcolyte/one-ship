@@ -125,6 +125,7 @@ async function loadGraph() {
   try {
     const graph = await daemonCall('get_project_knowledge_graph', {
       projectId: props.project.id,
+      force: null,
     });
     rawNodes.value = graph.nodes;
     rawEdges.value = graph.edges;
@@ -148,6 +149,7 @@ async function handleRebuildEdges() {
   try {
     await daemonCall('rebuild_project_knowledge_graph', {
       projectId: props.project.id,
+      force: null,
     });
     await loadGraph();
   } catch (err: unknown) {
@@ -194,6 +196,8 @@ async function executeSemanticSearch() {
       limit: 25,
       projectId: props.project.id,
       includeRelations: false,
+      maxRelationsPerResult: null,
+      minRelationScorePercent: null,
     });
     const scoreMap: Record<string, number> = {};
     const nextExpanded = new Set(expandedGroups.value);

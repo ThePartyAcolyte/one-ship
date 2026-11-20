@@ -1161,7 +1161,7 @@ watch(
       diskConflict.value = false;
       showDiffView.value = false;
       isEditMode.value = Boolean(tabEditModes.value[newPath]);
-      selectedInsightNode.value = null;
+      selectedInsightDoc.value = null;
       insightRangeContent.value = null;
 
       const draft = explorerStore.unsavedDrafts[newPath];

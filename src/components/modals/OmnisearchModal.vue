@@ -69,6 +69,8 @@ function performSearch() {
         limit: 15,
         projectId: props.activeProjectId ?? null,
         includeRelations: true,
+        maxRelationsPerResult: null,
+        minRelationScorePercent: null,
       });
       const seen = new Set<string>();
       const deduped = res.filter((item) => {

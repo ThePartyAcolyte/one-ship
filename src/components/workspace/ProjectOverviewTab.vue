@@ -63,7 +63,7 @@ async function handleIndexKnowledge() {
   if (!props.project?.id || isIndexingKnowledge.value) return;
   isIndexingKnowledge.value = true;
   try {
-    await daemonCall('index_project_knowledge', { projectId: props.project.id });
+    await daemonCall('index_project_knowledge', { projectId: props.project.id, force: null });
     await fetchOverviewSummary(props.project.id);
   } catch (err: unknown) {
     console.error('[ProjectOverviewTab] Failed to index knowledge:', err);

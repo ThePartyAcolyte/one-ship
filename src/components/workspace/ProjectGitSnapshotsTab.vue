@@ -17,7 +17,6 @@ import {
   X,
   AlertCircle,
   FileCode,
-  CheckCircle2,
   Eye,
   Sparkles,
   ArrowUpDown,
