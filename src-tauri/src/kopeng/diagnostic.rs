@@ -67,6 +67,14 @@ pub enum DiagnosticError {
     NoTools,
     #[error("Installation of {packages} failed: {details}")]
     Install { packages: String, details: String },
+    #[error("Invalid input: {0}")]
+    InvalidInput(String),
+    #[error("Failed to update git configuration: {0}")]
+    GitConfigFailed(String),
+    #[error("Cannot access directory {path}: {source}")]
+    Io { path: String, source: std::io::Error },
+    #[error(transparent)]
+    Config(#[from] crate::config::ConfigError),
     #[error("Background task failed: {0}")]
     Task(String),
 }
@@ -74,10 +82,14 @@ pub enum DiagnosticError {
 impl ApiError for DiagnosticError {
     fn status(&self) -> StatusCode {
         match self {
-            Self::UnknownTool(_) | Self::ToolUnavailableInDistro { .. } | Self::NoTools => StatusCode::BAD_REQUEST,
+            Self::UnknownTool(_)
+            | Self::ToolUnavailableInDistro { .. }
+            | Self::NoTools
+            | Self::InvalidInput(_) => StatusCode::BAD_REQUEST,
             Self::UnsupportedPackageManager => StatusCode::FAILED_DEPENDENCY,
-            Self::Install { .. } => StatusCode::BAD_GATEWAY,
-            Self::Spawn { .. } | Self::Task(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::Install { .. } | Self::GitConfigFailed(_) => StatusCode::BAD_GATEWAY,
+            Self::Config(e) => e.status(),
+            Self::Spawn { .. } | Self::Io { .. } | Self::Task(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 
@@ -89,6 +101,10 @@ impl ApiError for DiagnosticError {
             Self::UnsupportedPackageManager => "DiagnosticError::UnsupportedPackageManager",
             Self::NoTools => "DiagnosticError::NoTools",
             Self::Install { .. } => "DiagnosticError::Install",
+            Self::InvalidInput(_) => "DiagnosticError::InvalidInput",
+            Self::GitConfigFailed(_) => "DiagnosticError::GitConfigFailed",
+            Self::Io { .. } => "DiagnosticError::Io",
+            Self::Config(e) => e.code(),
             Self::Task(_) => "DiagnosticError::Task",
         }
     }
@@ -99,6 +115,10 @@ impl ApiError for DiagnosticError {
 #[ts(export)]
 pub struct DiagnosticState {
     pub git_installed: bool,
+    pub git_user_name: Option<String>,
+    pub git_user_email: Option<String>,
+    pub default_projects_root_path: String,
+    pub projects_root_exists: bool,
     pub gh_installed: bool,
     pub gh_authenticated: bool,
     pub glab_installed: bool,
@@ -148,8 +168,30 @@ fn succeeds(output: &Option<Output>) -> bool {
     output.as_ref().is_some_and(|o| o.status.success())
 }
 
+fn read_git_global_value(key: &str) -> Result<Option<String>, DiagnosticError> {
+    let Some(out) = run_tool("git", &["config", "--global", "--get", key])? else {
+        return Ok(None);
+    };
+    if !out.status.success() {
+        return Ok(None);
+    }
+    let val = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    Ok((!val.is_empty()).then_some(val))
+}
+
 fn collect_diagnostics() -> Result<DiagnosticState, DiagnosticError> {
     let git_installed = succeeds(&run_tool("git", &["--version"])?);
+    let git_user_name = if git_installed { read_git_global_value("user.name")? } else { None };
+    let git_user_email = if git_installed { read_git_global_value("user.email")? } else { None };
+    let default_projects_root_path = crate::config::resolve_effective_string(
+        None,
+        None,
+        "system",
+        "default_projects_root_path",
+    );
+    let projects_root_exists = !default_projects_root_path.trim().is_empty()
+        && std::path::Path::new(&default_projects_root_path).is_dir();
+
     let gh_installed = succeeds(&run_tool("gh", &["--version"])?);
 
     // `gh auth token` reads the local token store: no network call.
@@ -180,6 +222,10 @@ fn collect_diagnostics() -> Result<DiagnosticState, DiagnosticError> {
     let pm = detect_host_package_manager();
     Ok(DiagnosticState {
         git_installed,
+        git_user_name,
+        git_user_email,
+        default_projects_root_path,
+        projects_root_exists,
         gh_installed,
         gh_authenticated,
         glab_installed,
@@ -568,6 +614,79 @@ pub async fn install_missing_tools(tool_ids: Vec<String>) -> Result<(), Diagnost
     })
     .await
     .map_err(|e| DiagnosticError::Task(e.to_string()))?
+}
+
+/// Arguments for `set_git_global_identity`.
+#[derive(Deserialize, Debug, TS)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(export)]
+pub struct SetGitGlobalIdentityArgs {
+    pub name: String,
+    pub email: String,
+}
+
+/// Daemon command `set_git_global_identity`: sets global `git config user.name` and `user.email`.
+pub async fn set_git_global_identity(name: String, email: String) -> Result<(), DiagnosticError> {
+    let name_trimmed = name.trim().to_string();
+    let email_trimmed = email.trim().to_string();
+    if name_trimmed.is_empty() {
+        return Err(DiagnosticError::InvalidInput("Git user.name cannot be empty".to_string()));
+    }
+    if email_trimmed.is_empty() || !email_trimmed.contains('@') {
+        return Err(DiagnosticError::InvalidInput("Git user.email must be a valid email address".to_string()));
+    }
+    tokio::task::spawn_blocking(move || {
+        for (key, val) in [("user.name", name_trimmed.as_str()), ("user.email", email_trimmed.as_str())] {
+            let out = Command::new("git")
+                .args(["config", "--global", key, val])
+                .output()
+                .map_err(|e| DiagnosticError::Spawn { program: "git".to_string(), source: e })?;
+            if !out.status.success() {
+                let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
+                return Err(DiagnosticError::GitConfigFailed(format!("{key}: {stderr}")));
+            }
+        }
+        crate::logger::log("INFO", "diagnostic", "Updated global git user.name and user.email");
+        Ok(())
+    })
+    .await
+    .map_err(|e| DiagnosticError::Task(e.to_string()))?
+}
+
+/// Arguments for `ensure_projects_root_dir`.
+#[derive(Deserialize, Debug, TS)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(export)]
+pub struct EnsureProjectsRootDirArgs {
+    pub path: String,
+}
+
+/// Daemon command `ensure_projects_root_dir`: creates the workspace root directory if missing
+/// and persists `[system].default_projects_root_path` in `config.toml`.
+pub async fn ensure_projects_root_dir(path: String) -> Result<String, DiagnosticError> {
+    let trimmed = path.trim().to_string();
+    if trimmed.is_empty() {
+        return Err(DiagnosticError::InvalidInput("Projects root path cannot be empty".to_string()));
+    }
+    let path_buf = std::path::PathBuf::from(&trimmed);
+    if !path_buf.is_absolute() {
+        return Err(DiagnosticError::InvalidInput("Projects root path must be absolute".to_string()));
+    }
+    if path_buf.exists() && !path_buf.is_dir() {
+        return Err(DiagnosticError::InvalidInput(format!("'{trimmed}' exists and is not a directory")));
+    }
+    tokio::fs::create_dir_all(&path_buf)
+        .await
+        .map_err(|e| DiagnosticError::Io { path: trimmed.clone(), source: e })?;
+    let canonical = tokio::fs::canonicalize(&path_buf)
+        .await
+        .map_err(|e| DiagnosticError::Io { path: trimmed.clone(), source: e })?;
+    let canonical_str = canonical.to_string_lossy().into_owned();
+    let for_config = canonical_str.clone();
+    tokio::task::spawn_blocking(move || crate::config::set_default_projects_root_path(&for_config))
+        .await
+        .map_err(|e| DiagnosticError::Task(e.to_string()))??;
+    Ok(canonical_str)
 }
 
 #[cfg(test)]

@@ -65,6 +65,8 @@ const {
   effortOptions,
 } = pairPicker;
 
+const hasInstalledRunner = computed(() => (coreStore.installedRunners?.length ?? 0) > 0);
+
 // Computed target full path
 const computedTargetPath = computed(() => {
   const name = projectName.value.trim();
@@ -287,7 +289,7 @@ watch(() => props.show, async (isOpen) => {
     trackingMode.value = '';
     cloneRepoUrl.value = '';
     cloneProjectName.value = '';
-    cloneLaunchInit.value = true;
+    cloneLaunchInit.value = hasInstalledRunner.value;
     accessCheckResult.value = null;
     accessCheckError.value = null;
     prevExtractedName.value = '';
@@ -493,6 +495,12 @@ onUnmounted(() => {
             <div class="text-[10px] uppercase font-bold tracking-wider text-[var(--dim-color)]">
               Lead Architect Agent
             </div>
+            <div
+              v-if="!hasInstalledRunner"
+              class="p-2 border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] text-[var(--status-warn-color)] text-[10px]"
+            >
+              No agent runners detected (`agy`, `claude`, `opencode`). Install a CLI runner first or import an existing repository via Existing / Clone.
+            </div>
             <div class="grid grid-cols-2 gap-3">
               <div class="flex flex-col gap-1">
                 <label class="text-[10px] text-[var(--dim-color)] uppercase">Runner</label>
@@ -670,10 +678,14 @@ onUnmounted(() => {
               <Sparkles :size="14" class="text-[var(--accent-color)]" />
               <div class="flex flex-col">
                 <span class="font-bold text-[var(--fg-color)] text-[11px]">Launch Project Initializer</span>
-                <span class="text-[10px] text-[var(--dim-color)]">Start stack reconnaissance and persona setup after cloning</span>
+                <span class="text-[10px] text-[var(--dim-color)]">
+                  {{ hasInstalledRunner
+                    ? 'Start stack reconnaissance and persona setup after cloning'
+                    : 'Unavailable: no agent runners installed on this machine' }}
+                </span>
               </div>
             </div>
-            <AppToggle v-model="cloneLaunchInit" />
+            <AppToggle v-model="cloneLaunchInit" :disabled="!hasInstalledRunner" />
           </div>
         </div>
       </div>

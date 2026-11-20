@@ -88,6 +88,8 @@ import type { DeleteAgentPersonaArgs } from './generated/DeleteAgentPersonaArgs'
 import type { DesigmaPreviewResult } from './generated/DesigmaPreviewResult';
 import type { DesigmaStatus } from './generated/DesigmaStatus';
 import type { DiagnosticState } from './generated/DiagnosticState';
+import type { EnsureProjectsRootDirArgs } from './generated/EnsureProjectsRootDirArgs';
+import type { SetGitGlobalIdentityArgs } from './generated/SetGitGlobalIdentityArgs';
 import type { DiscoveredInstrument } from './generated/DiscoveredInstrument';
 import type { DiscoveredMcuPort } from './generated/DiscoveredMcuPort';
 import type { DispatchGitInstructionArgs } from './generated/DispatchGitInstructionArgs';
@@ -284,6 +286,8 @@ export interface DaemonCommands {
   run_diagnostics: { args: NoArgs; result: DiagnosticState };
   get_host_capabilities: { args: NoArgs; result: HostCapabilities };
   install_missing_tools: { args: InstallMissingToolsArgs; result: null };
+  set_git_global_identity: { args: SetGitGlobalIdentityArgs; result: null };
+  ensure_projects_root_dir: { args: EnsureProjectsRootDirArgs; result: string };
   search_github_repos: { args: NoArgs; result: GithubRepo[] };
   check_git_remote_access: { args: CheckGitRemoteAccessArgs; result: GitRemoteAccessCheck };
   clone_and_add_project: { args: CloneAndAddProjectArgs; result: HydratedProject };

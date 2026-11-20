@@ -315,17 +315,17 @@ install_base_toolchain_deps() {
   (( SKIP_DEPS )) && return 0
   case "$PKG_MANAGER" in
     pacman)
-      install_system_packages base-devel pkgconf openssl webkit2gtk-4.1 libayatana-appindicator librsvg protobuf systemd-libs libusb git nodejs npm rust
+      install_system_packages base-devel pkgconf openssl webkit2gtk-4.1 libayatana-appindicator librsvg protobuf systemd-libs libusb git github-cli nodejs npm rust
       ;;
     apt-get)
-      install_system_packages build-essential pkg-config libssl-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev protobuf-compiler libudev-dev libusb-1.0-0-dev curl wget file libxdo-dev git nodejs npm
+      install_system_packages build-essential pkg-config libssl-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev protobuf-compiler libudev-dev libusb-1.0-0-dev curl wget file libxdo-dev git gh nodejs npm
       ;;
     dnf)
-      install_system_packages @development-tools pkgconf-pkg-config openssl-devel webkit2gtk4.1-devel libayatana-appindicator-gtk3-devel librsvg2-devel protobuf-compiler systemd-devel libusb1-devel git nodejs npm
+      install_system_packages @development-tools pkgconf-pkg-config openssl-devel webkit2gtk4.1-devel libayatana-appindicator-gtk3-devel librsvg2-devel protobuf-compiler systemd-devel libusb1-devel git gh nodejs npm
       ;;
     zypper)
       install_system_packages -t pattern devel_basis
-      install_system_packages pkg-config libopenssl-devel webkit2gtk3-devel libayatana-appindicator3-devel librsvg-devel protobuf-devel libudev-devel libusb-1_0-devel git nodejs npm
+      install_system_packages pkg-config libopenssl-devel webkit2gtk3-devel libayatana-appindicator3-devel librsvg-devel protobuf-devel libudev-devel libusb-1_0-devel git gh nodejs npm
       ;;
     *)
       log_warn "Unsupported package manager; ensure Rust, Node/npm, pkg-config, OpenSSL, protoc (protobuf-compiler), and WebKitGTK 4.1 headers are installed."
@@ -449,6 +449,30 @@ detect_default_runner_pair() {
 }
 
 seed_initial_config() {
+  local projects_root="${ONESHIP_PROJECTS_ROOT:-$HOME/Projects}"
+  if (( ! ASSUME_YES )) && [[ -t 0 ]]; then
+    local custom_root=""
+    read -r -p "Default projects directory [$projects_root]: " custom_root || custom_root=""
+    [[ -n "$custom_root" ]] && projects_root="$custom_root"
+  fi
+  if [[ ! -d "$projects_root" ]]; then
+    run_cmd mkdir -p "$projects_root"
+  fi
+
+  if command -v git >/dev/null 2>&1; then
+    local git_name git_email
+    git_name="$(git config --global --get user.name 2>/dev/null || true)"
+    git_email="$(git config --global --get user.email 2>/dev/null || true)"
+    if [[ -z "$git_name" || -z "$git_email" ]] && (( ! ASSUME_YES )) && [[ -t 0 ]]; then
+      if ask_yes_no "Global git user.name/user.email not set. Configure now?" "y"; then
+        [[ -z "$git_name" ]] && read -r -p "Git user.name: " git_name || true
+        [[ -z "$git_email" ]] && read -r -p "Git user.email: " git_email || true
+        [[ -n "$git_name" ]] && run_cmd git config --global user.name "$git_name"
+        [[ -n "$git_email" ]] && run_cmd git config --global user.email "$git_email"
+      fi
+    fi
+  fi
+
   local cfg_dir="${XDG_CONFIG_HOME:-$HOME/.config}/one-ship"
   local cfg_file="$cfg_dir/config.toml"
   if [[ -f "$cfg_file" ]]; then
@@ -463,7 +487,7 @@ seed_initial_config() {
   IFS='|' read -r def_runner def_model def_effort <<< "$runner_triple"
 
   if (( DRY_RUN )); then
-    log_info "[dry-run] Would create initial $cfg_file (preferred_terminal=$term, runner=$def_runner, model=$def_model)"
+    log_info "[dry-run] Would create initial $cfg_file (preferred_terminal=$term, projects_root=$projects_root, runner=$def_runner, model=$def_model)"
     return 0
   fi
 
@@ -473,6 +497,7 @@ seed_initial_config() {
 
 [system]
 preferred_terminal = "$term"
+default_projects_root_path = "$projects_root"
 log_level = "INFO"
 dbus_call_timeout_seconds = 2
 webkit_renderer_mode = "auto"
@@ -804,6 +829,14 @@ main() {
   (( FEAT_CAD ))         && install_feature_cad_solidcraft
   (( FEAT_VOICE ))       && install_feature_voice
   (( FEAT_OMARCHY ))     && install_feature_omarchy
+
+  if ! command -v agy >/dev/null 2>&1 && ! command -v claude >/dev/null 2>&1 && ! command -v opencode >/dev/null 2>&1; then
+    echo ""
+    log_warn "No AI agent runner detected on PATH (agy, claude, opencode)."
+    log_info "Install at least one CLI runner before launching autonomous agents:"
+    log_info "  - claude   : npm install -g @anthropic-ai/claude-code"
+    log_info "  - opencode : curl -fsSL https://opencode.ai/install | bash"
+  fi
 
   echo ""
   log_ok "ONE-SHIP installation finished. Ensure '$PREFIX/bin' is on your PATH and launch with 'one-ship-launch'."

@@ -6,6 +6,7 @@ import type { SelectOption } from '../ui';
 import { useAgentMetricsStore, type QuotaGaugeStyle } from '../../stores/agentMetricsStore';
 import { useCoreStore } from '../../stores/coreStore';
 import { useRunnerCatalog } from '../../utils/runnerCatalog';
+import { INTEGRATION_INSTALL_GUIDES } from '../../utils/integrationGuides';
 import { daemonCall } from '../../utils/daemonClient';
 import { emitUiEvent } from '../../utils/uiEvents';
 import type { ConfigFieldSchema, PluginConfigSchema, ProjectRecord } from '../../types';
@@ -598,6 +599,16 @@ const pairProblems = computed<string[]>(() => {
                   </span>
                 </div>
                 <p class="text-[10px] text-[var(--dim-color)]">{{ item.reason }}</p>
+                <div
+                  v-if="!item.available && INTEGRATION_INSTALL_GUIDES[item.plugin_id]"
+                  class="px-2 py-1.5 border border-[var(--border-color)]/60 bg-[var(--bg-color)]/40 text-[9px] text-[var(--dim-color)] flex flex-col gap-0.5"
+                >
+                  <span>{{ INTEGRATION_INSTALL_GUIDES[item.plugin_id].summary }}</span>
+                  <div class="flex flex-wrap items-center justify-between gap-2 text-[var(--fg-color)]">
+                    <code>{{ INTEGRATION_INSTALL_GUIDES[item.plugin_id].installCmd }}</code>
+                    <span class="text-[var(--dim-color)]">{{ INTEGRATION_INSTALL_GUIDES[item.plugin_id].sourceLabel }}</span>
+                  </div>
+                </div>
                 <div v-for="field in editableFieldsForIntegration(item.plugin_id)" :key="field.key" class="flex flex-col gap-1 pt-1">
                   <span class="text-[9px] text-[var(--dim-color)] font-bold uppercase">{{ field.label }} ({{ field.key }})</span>
                   <AppInput

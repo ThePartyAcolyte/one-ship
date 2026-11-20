@@ -2801,6 +2801,43 @@ pub fn set_voice_controller_enabled(
     Ok(status)
 }
 
+/// Persists `[system].default_projects_root_path` in `config.toml` and refreshes the config cache.
+pub fn set_default_projects_root_path(root_path: &str) -> Result<(), ConfigError> {
+    let path = get_global_config_path()?;
+    let mut doc = read_global_config()?;
+    let root_tab = doc
+        .as_table_mut()
+        .ok_or_else(|| invalid(&path, "config.toml root must be a table"))?;
+    let sys_entry = root_tab
+        .entry("system".to_string())
+        .or_insert_with(|| toml::Value::Table(toml::map::Map::new()));
+    let sys_tab = sys_entry
+        .as_table_mut()
+        .ok_or_else(|| invalid(&path, "[system] must be a table"))?;
+    sys_tab.insert(
+        "default_projects_root_path".to_string(),
+        toml::Value::String(root_path.to_string()),
+    );
+
+    let serialized = toml::to_string_pretty(&doc)
+        .map_err(|e| invalid(&path, format!("Failed to serialize config.toml: {e}")))?;
+    let validated = parse_config_document(&path, &serialized)?;
+    fs::write(&path, &serialized).map_err(io_err(format!("Cannot write {}", path.display())))?;
+    if let Ok(meta) = fs::metadata(&path) {
+        if let Ok(mtime) = meta.modified() {
+            *GLOBAL_CONFIG_CACHE
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner) = Some((mtime, validated));
+        }
+    }
+    crate::logger::log(
+        "INFO",
+        "config",
+        &format!("Updated [system].default_projects_root_path = '{}'", root_path),
+    );
+    Ok(())
+}
+
 /// Daemon command `save_global_config`: validates and writes `config.toml`, then propagates the
 /// daemon port to the runner MCP configs.
 pub fn save_global_config(config_toml: String) -> Result<(), ConfigError> {

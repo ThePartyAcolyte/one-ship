@@ -22,6 +22,7 @@ import SwitchConfirmationModal from './components/modals/SwitchConfirmationModal
 import ApprovalRequestModal from './components/modals/ApprovalRequestModal.vue';
 import OmnisearchModal from './components/modals/OmnisearchModal.vue';
 import AboutModal from './components/modals/AboutModal.vue';
+import SetupChecklistModal, { ONBOARDING_DISMISSED_KEY } from './components/modals/SetupChecklistModal.vue';
 import RollingStatusLog from './components/floating/RollingStatusLog.vue';
 import ProjectWorkspace from './components/workspace/ProjectWorkspace.vue';
 import FloatingChatOverlay from './components/dialogue/FloatingChatOverlay.vue';
@@ -84,15 +85,27 @@ function toggleLanguage() {
 const diagnostics = ref<DiagnosticState | null>(null);
 const diagnosticsError = ref<string | null>(null);
 const isInstallingTools = ref(false);
+const showSetupModal = ref(false);
+let onboardingChecked = false;
 
 const isAllDiagnosticsOk = computed(() => {
-  return Boolean(diagnostics.value?.git_installed);
+  const d = diagnostics.value;
+  if (!d) return false;
+  const hasIdentity = Boolean(d.git_user_name?.trim() && d.git_user_email?.trim());
+  const hasRunner = (coreStore.installedRunners?.length ?? 0) > 0;
+  return Boolean(d.git_installed && hasIdentity && d.projects_root_exists && hasRunner);
 });
 
 async function runDiagnostics() {
   try {
     diagnostics.value = await daemonCall("run_diagnostics", {});
     diagnosticsError.value = null;
+    if (!onboardingChecked && coreStore.hostCapabilities !== null) {
+      onboardingChecked = true;
+      if (!isAllDiagnosticsOk.value && localStorage.getItem(ONBOARDING_DISMISSED_KEY) !== '1') {
+        showSetupModal.value = true;
+      }
+    }
   } catch (e: unknown) {
     diagnostics.value = null;
     diagnosticsError.value = String(e);
@@ -713,6 +726,7 @@ onMounted(async () => {
       @toggle-language="toggleLanguage"
       @install-tools="installTools"
       @open-settings="() => openSettingsModal('global')"
+      @open-setup="showSetupModal = true"
       @open-logs="openSystemLogs"
       @open-about="showAboutModal = true"
       @open-omnisearch="openOmnisearch"
@@ -846,6 +860,16 @@ onMounted(async () => {
     <AboutModal
       :show="showAboutModal"
       @close="showAboutModal = false"
+    />
+
+    <SetupChecklistModal
+      :show="showSetupModal"
+      :diagnostics="diagnostics"
+      :is-installing-tools="isInstallingTools"
+      @close="showSetupModal = false"
+      @refresh-diagnostics="runDiagnostics"
+      @install-tools="installTools"
+      @open-integrations="() => { showSetupModal = false; openSettingsModal('global'); }"
     />
 
   </div>

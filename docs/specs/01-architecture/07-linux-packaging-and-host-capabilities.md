@@ -61,7 +61,11 @@ Distribution uses two primary channels:
 ### `HostCapabilities`, dynamic feature gating, and OpenDictate decoupling
 
 - **Host capability registry (`get_host_capabilities` in `diagnostic.rs`, `coreStore.ts`):** exposes a daemon snapshot reporting `installed_runners`, optional domain `integrations` (`rea`, `electronics`, `solidcraft`, `pcbcraft`, `desigma`, `voice_controller`), `opendictate_available`, `gdbus_available`, `omarchy_available`, `hyprland_available`, `clipboard_available`, and `package_manager`.
-- **Dynamic UI and settings gating:**
+- **`HostCapabilities`, dynamic feature gating, and first-run onboarding (`SetupChecklistModal.vue`, `integrationGuides.ts`, `AddProjectModal.vue`, `AppHeader.vue`):**
+  - `run_diagnostics` reports `git_user_name`, `git_user_email`, `default_projects_root_path`, and `projects_root_exists` alongside `git`, `gh`, `glab`, and `opendictate` status.
+  - `isAllDiagnosticsOk` (`App.vue`) and `AppHeader.vue` (`systemHealthSummary`) require `git_installed`, non-empty `git_user_name`/`git_user_email`, `projects_root_exists`, and at least one installed runner (`installed_runners.length > 0`) before reporting `All Systems Nominal`.
+  - `SetupChecklistModal.vue` auto-opens once on first boot when prerequisites are missing (with a persistent `Don't show automatically on startup` flag and menu entry `Setup & Readiness`), guiding users through workspace root creation (`ensure_projects_root_dir`), Git global identity (`set_git_global_identity`) + `gh` install/auth, AI runner installation (`agy`, `claude`, `opencode`), and external companion tools (`oneship-designer`, `pcbcraft`, `solidcraft`, `rea`, `electronics`, `opendictate`) via `integrationGuides.ts`.
+  - `AddProjectModal.vue` disables `Launch Project Initializer` automatically when zero runners are installed, and `clone_and_add_project` (`github.rs`) creates missing parent directories (`create_dir_all`) cleanly before cloning.
   - `ProjectWorkspace.vue` gates optional workspace tabs (`electronics`, `design`, `cad`, `pcb`, `rea`) via `coreStore.isIntegrationAvailable(...)` and includes `pcb` and `hostCapabilities` in the active-tab fallback watcher.
   - `ProjectConfigPanel.vue` and `SettingsModal.vue` hide unavailable plugin categories and filter runner dropdowns to `installed_runners` (while keeping already-configured values selectable).
   - `ProjectConfigPanel.vue` surfaces a single missing-integration warning when an imported project's `rula.toml` enables a feature unavailable on the host; `SettingsModal.vue` includes an **Integrations** tab for capability inspection, custom binary overrides, and live refresh.
@@ -92,7 +96,7 @@ Distribution uses two primary channels:
 
 ## Contracts
 
-- **Daemon RPC command (`api.rs`):** `get_host_capabilities` -> `HostCapabilities` (`installed_runners`, `integrations: Vec<IntegrationCapability>`, `opendictate_available`, `gdbus_available`, `omarchy_available`, `hyprland_available`, `clipboard_available`, `package_manager`).
+- **Daemon RPC commands (`api.rs`):** `get_host_capabilities` -> `HostCapabilities`, `run_diagnostics` -> `DiagnosticState`, `set_git_global_identity`, `ensure_projects_root_dir`.
 - **Environment overrides:** `ONESHIP_TEMPLATES_DIR`, `ONESHIP_RESOURCES_DIR`, `ONESHIP_PORTRAITS_SRC`, `ONESHIP_APP_BIN`, `ONESHIP_WEBKIT_LAUNCHER_RETRY`.
 - **Runtime snapshot:** `$XDG_RUNTIME_DIR/oneship-status.json`.
 - **Packaging artifacts:** [`install.sh`](../../../install.sh), [`packaging/bin/one-ship-launch`](../../../packaging/bin/one-ship-launch), [`packaging/systemd/oneship-daemon.service`](../../../packaging/systemd/oneship-daemon.service), [`packaging/one-ship.desktop`](../../../packaging/one-ship.desktop), [`packaging/udev/99-oneship-instruments.rules`](../../../packaging/udev/99-oneship-instruments.rules), [`integrations/omarchy-bar/`](../../../integrations/omarchy-bar/).

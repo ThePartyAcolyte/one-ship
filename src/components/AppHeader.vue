@@ -43,6 +43,7 @@ const emit = defineEmits<{
   (e: 'toggleLanguage'): void;
   (e: 'installTools', toolIds: string[]): void;
   (e: 'openSettings'): void;
+  (e: 'openSetup'): void;
   (e: 'openLogs'): void;
   (e: 'openAbout'): void;
   (e: 'openOmnisearch', initialQuery?: string): void;
@@ -119,10 +120,11 @@ function closeAppMenu() {
   isAppMenuOpen.value = false;
 }
 
-function handleMenuAction(action: 'logs' | 'settings' | 'about') {
+function handleMenuAction(action: 'logs' | 'settings' | 'setup' | 'about') {
   closeAppMenu();
   if (action === 'logs') emit('openLogs');
   else if (action === 'settings') emit('openSettings');
+  else if (action === 'setup') emit('openSetup');
   else if (action === 'about') emit('openAbout');
 }
 
@@ -174,8 +176,14 @@ const systemHealthSummary = computed(() => {
   if (props.diagnosticsError) {
     return { ok: false, label: 'Diagnostics Error' };
   }
+  if (!props.diagnostics?.git_installed) {
+    return { ok: false, label: 'Missing Git' };
+  }
+  if (coreStore.installedRunners !== null && coreStore.installedRunners.length === 0) {
+    return { ok: false, label: 'No Agent Runners' };
+  }
   if (!props.isDiagnosticsOk) {
-    return { ok: false, label: 'Missing Core Tools' };
+    return { ok: false, label: 'Setup Incomplete' };
   }
   return { ok: true, label: 'All Systems Nominal' };
 });
@@ -406,7 +414,10 @@ const daemonError = computed(() => {
           class="absolute right-0 top-full mt-1.5 w-64 bg-[var(--ui-bg-title)] border border-[var(--border-color)] shadow-2xl z-50 font-mono text-[10px] normal-case select-none"
         >
           <!-- System Health Banner -->
-          <div class="px-3 py-2 border-b border-[var(--border-color)] ui-surface-card flex items-center justify-between gap-2">
+          <div
+            class="px-3 py-2 border-b border-[var(--border-color)] ui-surface-card flex items-center justify-between gap-2 cursor-pointer hover:border-[var(--accent-color)]"
+            @click="handleMenuAction('setup')"
+          >
             <div class="flex items-center gap-1.5 min-w-0">
               <ShieldCheck v-if="systemHealthSummary.ok" :size="12" class="text-[var(--status-ok-color)] shrink-0" />
               <AlertTriangle v-else :size="12" class="text-[var(--status-warn-color)] shrink-0" />
@@ -455,6 +466,15 @@ const daemonError = computed(() => {
             >
               <History :size="12" class="text-[var(--accent-color)] shrink-0" />
               <span>System Logs</span>
+            </button>
+
+            <button
+              type="button"
+              @click="handleMenuAction('setup')"
+              class="w-full px-3 py-2 flex items-center gap-2.5 text-left text-[var(--fg-color)] hover:bg-[var(--accent-color)]/10 hover:text-[var(--accent-color)] transition-colors cursor-pointer"
+            >
+              <ShieldCheck :size="12" class="text-[var(--accent-color)] shrink-0" />
+              <span>Setup &amp; Readiness</span>
             </button>
 
             <button

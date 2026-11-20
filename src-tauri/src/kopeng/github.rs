@@ -367,8 +367,13 @@ pub async fn clone_and_add_project(
     if !parent.is_absolute() {
         return Err(GithubError::InvalidTargetPath(parent_path, "parent path must be absolute".to_string()));
     }
-    if !parent.is_dir() {
-        return Err(GithubError::InvalidTargetPath(parent_path, "parent path does not exist or is not a directory".to_string()));
+    if parent.exists() && !parent.is_dir() {
+        return Err(GithubError::InvalidTargetPath(parent_path, "parent path exists and is not a directory".to_string()));
+    }
+    if !parent.exists() {
+        tokio::fs::create_dir_all(&parent)
+            .await
+            .map_err(|e| GithubError::InvalidTargetPath(parent_path.clone(), format!("cannot create parent directory: {e}")))?;
     }
 
     let target_dir = parent.join(&name);
