@@ -5,7 +5,7 @@ import { listenDaemonEvent } from '../utils/daemonEvents';
 import { reportAsyncFailure } from '../utils/reportAsyncFailure';
 import { useCoreStore } from './coreStore';
 import { useDialogueStore } from './dialogueStore';
-import { createDomTarget, type DictationTarget, type DictationTargetMeta } from '../utils/dictationTargets';
+import type { DictationTarget, DictationTargetMeta } from '../utils/dictationTargets';
 import type { DictationStatus } from '../types/generated/DictationStatus';
 import type { DictationState } from '../types/generated/DictationState';
 
