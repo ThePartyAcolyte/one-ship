@@ -42,7 +42,9 @@ concatenating those revisions instead of replacing the previous text.
 - `full_text()` combines authoritative text with the provisional interim only for display.
 
 `docs/specs/05-voice/02-dictation-and-agent-chat.md` now documents the authoritative/provisional
-split and the word-coverage revision rule.
+split and the word-coverage revision rule. Remaining references to the retired external dictation
+daemon were removed from active specs, README files and test fixtures; only historical devlogs and
+`docs/legacy/` retain them as provenance.
 
 ## Regression tests
 

@@ -22,7 +22,7 @@ All 40 living specifications are organized into 7 subsystem categories:
 
 ### 1. [Architecture](specs/01-architecture/README.md)
 - [Plugin Architecture (Kopeng)](specs/01-architecture/01-plugin-architecture.md) — Modular domain subsystems (`kopeng/`), plain-English `rula.toml` namespacing, and declarative plugin discovery.
-- [Configuration Schema and Cascade](specs/01-architecture/02-configuration-schema-and-cascade.md) — 4-level configuration cascade (`rula.toml` <-> system defaults), runner resolution, and 17 plugin schemas.
+- [Configuration Schema and Cascade](specs/01-architecture/02-configuration-schema-and-cascade.md) — 4-level configuration cascade (`rula.toml` <-> system defaults), runner resolution, and 18 plugin schemas.
 - [Platform Skill Injection](specs/01-architecture/03-platform-skill-injection.md) — Single-source `templates/` skill catalog, relocatable `TEMPLATES_ROOT`, and `SkillStatus` versioning.
 - [Streamable HTTP MCP Daemon](specs/01-architecture/04-streamable-http-mcp-daemon.md) — Axum HTTP MCP bus (`POST /mcp`), 59-tool partitioning, delegation ledger, and `/proc` caller attestation.
 - [Daemon Operator API and Lifecycle](specs/01-architecture/05-daemon-operator-api-and-lifecycle.md) — Mandatory daemon model, `/api/events` SSE bus, fail-closed `/api/*` guard, RPC commands, and systemd units.

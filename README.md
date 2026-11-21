@@ -12,24 +12,23 @@ A multidisciplinary maker's workstation and autonomous agent control center for 
 
 In *The Expanse*, the Belters say a ship is one body: the hull, the crew, everything aboard. A station is one ship too, and so, if you zoom out far enough, is humanity.
 
-I borrowed that idea for a smaller problem. The tools we use to work with LLMs feel broken to me. The craftsmen hand-write every line and refuse to let go. The swarm people launch a thousand agents, burn tokens, and hope.
+I borrowed that idea for a smaller problem. The tools I use to work feel broken and disconnected. LLMs, CLIs, IDEs, CADs, EDAs, Project Managers and yada yada. Can I put everything I need in one ship? 
 
-I wanted a third way: not typing the `for` loop, but still in command. A captain, not a gambler.
+We live in very weird times. We try to balance *artificial intelligence* with *human intelligence*. Many programmers have lost the joy of writing code and while the craftsmen hand-write every line and refuse to let go, the swarm people launch a thousand agents, burning a zillion tokens hoping for the best.
 
-A terminal is a flood of text. An IDE is a thousand tools built for writing code by hand. ONE-SHIP is neither. The runner (`agy`, `claude`, `opencode`) is still the harness, and ONE-SHIP is the control panel around it, with no noise. A spaceship has no jacuzzi, only what is vital for the trip. That is the bar: what is vital to survive a project, from my very personal point of view.
+I like to think there is another way: not typing the `for` loop, but still in command of every single desision. A captain, not a gambler.
 
-The goal is to talk to the crew instead of clicking: soldering a board, probe in hand, saying "this pin looks wrong" and having the agent act on it. We are building toward that voice-first workflow through the global voice controller and hardware digests, while keeping deterministic control over every process, token, and file.
+One of the core principles of Mazda's design philosophy is *Jinba Ittai*: person and horse as one body. ONE-SHIP is the bridge, connecting tools, human and AIs. The runner is still the harness, and ONE-SHIP is the control panel around it, packed with every tool *(I think)* I need. A spaceship built with a lot of tradeoffs, for my ***very personal adventure***.
+
 
 ## What it replaces
 
-The terminal workflow around agent CLIs: one pane per agent, one pane per dev server, a multiplexer to keep them alive, and a lot of scrolling. In ONE-SHIP a persistent Rust daemon (`oneship-daemon`) owns every process and database, and the Tauri window is only a view: close or hide it and the agents and services keep running.
-
-It does not replace Gemini on the web or the Claude desktop app.
+Coming from the ERP world, I apreciate *(a little too much)* the value of centralized data and tools. I'm also a maker with ADHD, so keeping my little home lab in order and keeping track of my projects has always been a strugle. This tool is not a replacement for a fully fledged IDE. Is just a different aproach. 
 
 ## Working inside it
 
-1. **Add or bootstrap a project.** Existing repositories receive read-only reconnaissance from an initializer agent that generates `rula.toml` and raises initialization flags (`docs`, `todos`, `tech_debt`, `profiler`). Greenfield projects start as a spec-first conversation that scaffolds foundational docs and `rula.toml` before any implementation code.
-2. **Talk to the crew across continuous threads.** Threads, Conversations, and runner Native Sessions are tracked separately in SQLite. Switching runners or compacting context carries a structured Brief forward; spoken summaries go to the chat overlay while technical payloads (plans, specs, code) land in side-by-side artifacts.
+1. **Add or bootstrap a project.** Existing repositories receive read-only reconnaissance from an initializer agent that analyzes the project, proposes an initial config file, organizes documentations and specs, defines the crew (agents personas, that will specialize depending on the project's nature) and sets the initial state. New projects starts with a grill and then go through the same process.
+2. **Talk to the crew across continuous threads.** Agents receive a name, specialty and a portrait. The aproach here is that conversation occurs in a natural *(and TTS ready)* language, much like a colleage would talk to you. The technical stuff is separated in an artifact attached to the message. Underneath, there still a CLI running the agent.
 3. **Control everything by voice or UI.** Press `Alt+V` inside any text field to dictate natively with **Gemini 3.5 Transcribe Live**, or outside a field to invoke the **Global Voice Controller** ("Ship Brain") backed by Gemini Live, PipeWire audio, and the **Unified Capability Core** (`capability_discover` / `capability_execute`) across all project domains regardless of which tab is active.
 4. **Delegate, approve, and rotate quota.** Agents delegate tasks through the daemon's PID-attested HTTP MCP bus and block on explicit user approval for privileged actions (GitHub/GitLab draft PRs, deletions, migrations). Multi-account management (`google`, `deepseek`, `claude`) encrypts tokens with AES-256-GCM and rotates model pools when quotas tighten.
 5. **Stay safe with hidden snapshots.** Every agent turn and milestone can be snapshotted onto domain-scoped hidden Git refs (`refs/one-ship/snapshots/`) for per-file diffing and rollback without polluting commit history.
@@ -39,7 +38,7 @@ It does not replace Gemini on the web or the Claude desktop app.
 
 Based on the [40 living specifications](docs/specs/README.md):
 
-- **Autonomous Agent Runtime & MCP Bus:** Headless multi-turn supervision (`agy`, `claude` over `stream-json`; `opencode` with DeepSeek over ACP) with process-group isolation, boot-time adoption, on-demand skill symlinking (`.agents/skills/`), deterministic `64×96` pixel-portrait DNA, and a 59-tool HTTP MCP server attested via Linux `/proc`.
+- **Autonomous Agent Runtime & MCP Bus:** Headless multi-turn supervision (`agy`, `claude` over `stream-json`; `opencode` with DeepSeek over ACP) with process-group isolation, boot-time adoption, on-demand skill symlinking (`.agents/skills/`), and a 59-tool HTTP MCP server attested via Linux `/proc`.
 - **Voice & Unified Capability Core:** Native Gemini Live dictation (`gemini-3.5-transcribe-live`) with revision-safe transcript reconciliation, VAD rollover and replay into focused fields, plus the global Gemini Live conversational orchestrator wired to a navigation-agnostic `CapabilityProvider` registry and persistent voice sessions with a 65K TPM budget guard.
 - **Projects, Git & Forge Collaboration:** 4-level cascading configuration (`rula.toml` ↔ `~/.config/one-ship/config.toml`), supervised persistent services and one-shot tasks with port-conflict release, cyclic logging, dual-signification Git workspace, provider-neutral Forge workflows (GitHub via `gh`, GitLab via `glab`, persistent triage inbox, `Fork ↔ Upstream` flow), opt-in Kanban/Schedule/Gantt/Milestones, and a sandboxed CodeMirror 6 explorer with inline document comments.
 - **Observability & Continuous Profiling:** Every supervised service and task run is sampled continuously into **DuckDB** (`CPU %`, tree `RSS`, threads, disk I/O) and can wrap profiler engines (`samply`, `py-spy`, `v8prof`) via declarative `manifest.toml` plugins.
@@ -60,7 +59,7 @@ The workspace adapts dynamically to enabled `rula.toml` plugins and `HostCapabil
 - **Git & Snapshots:** Commit graph, working-tree diffs, AI-assisted commit messages, branch selector, custom VCS presets, and domain-scoped hidden snapshots.
 - **Scripts:** Supervised persistent services, one-shot tasks, and shells with live rolling output and port-conflict guards.
 - **Profiling:** Run-bound DuckDB process-tree metrics, run comparison (`DIFF`), and flamegraph artifact launch.
-- **Skills:** Project-scoped skill catalog and JIT toggling between `.agents/skills/` and `.agents/.skills-disabled/`.
+- **Skills:** Project-scoped skill catalog and JIT toggling between `.agents/skills/` and `.agents/.skills-disabled/`. Search and import new skills directly from SkillsMP. 
 - **Graph:** Knowledge graph explorer and transversal semantic search (`Ctrl + K` Omnisearch).
 - **Preview:** Embedded dev-server viewport for web frontends configured under `[preview]`.
 - **RE Lab / Electronics / Design / CAD / PCB:** Domain workbenches gated by host tool availability and `rula.toml` plugin flags.
@@ -78,18 +77,15 @@ The workspace adapts dynamically to enabled `rula.toml` plugins and `HostCapabil
   │                       oneship-daemon (Rust, Tokio, Axum :8765)          │
   │  Process Supervisor · UI State Machine · Unified Capability Core        │
   │  Kopeng Plugins · Git/Snapshots · Multi-Account · Hardware USB/Serial   │
-  │  Global Voice Controller (Gemini Live + PipeWire pw-record / pw-play)   │
+  │  Native Gemini Dictation + Global Voice Controller (Gemini Live/PipeWire) │
   └──────────────┬────────────────────────┬────────────────────────┬────────┘
                  │                        │                        │
                  ▼                        ▼                        ▼
               SQLite                   DuckDB                   LanceDB
       (state, minutes, FTS5,     (continuous tree      (BGE-M3 INT8 embeddings +
        knowledge_edges, logs)     profiling samples)    Tree-sitter RAG chunks)
-                 ▲
-                 │ Gemini Live (native dictation)
-        ┌────────┴────────┐
-        │ Gemini Live STT │ (Native focused-field dictation)
-        └─────────────────┘
+
+  [Microphone] ──pw-record──► [Native Gemini Live STT] ──text──► focused field
 ```
 
 ## Stack
@@ -143,7 +139,7 @@ Useful flags:
 
 ```bash
 ./install.sh --profile minimal   # Core IDE + daemon + systemd unit + desktop entry
-./install.sh --profile standard  # Core + RE Lab + Electronics (+udev) + Voice + Omarchy widget
+./install.sh --profile standard  # Core + RE Lab + Electronics (+udev) + Omarchy widget
 ./install.sh --profile full      # Standard + DE-SIGMA + PCBCraft + SolidCraft binary lookup
 ./install.sh --dry-run           # Print planned actions without modifying the system
 ./install.sh --uninstall         # Remove installed binaries, service, desktop entry, and templates

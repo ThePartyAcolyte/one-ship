@@ -1893,8 +1893,8 @@ mod tests {
 
     #[test]
     fn full_session_revisions_with_early_corrections_replace_base_text() {
-        let first = "2400 Ya este es un Ya esta es una prueba. de dictado eh en tiempo real usando el motor local de dictado Adiós";
-        let revised = "Ya, esta es una prueba de dictado eh en tiempo real usando el motor local de dictado. Adiós OpenDictate. Te extrañaremos. Ajá, tenemos audio doblado.";
+        let first = "El informe trimestral describe tres riesgos operativos y dos acciones correctivas. La revisión inicial queda cerrada.";
+        let revised = "El informe trimestral describe tres riesgos operativos y dos acciones correctivas. La revisión corregida añade un plan de seguimiento. El comité aprueba el cierre.";
         let mut state = TranscriptState::new();
         state.committed_text = join_segments(&state.committed_text, first);
         state.committed_text = join_segments(&state.committed_text, revised);
@@ -1903,8 +1903,8 @@ mod tests {
 
     #[test]
     fn authoritative_full_session_revisions_replace_committed_text() {
-        let first = "2400 Ya este es un Ya esta es una prueba. de dictado eh en tiempo real usando el motor local de dictado Adiós";
-        let revised = "Ya, esta es una prueba de dictado eh en tiempo real usando el motor local de dictado. Adiós OpenDictate. Te extrañaremos. Ajá, tenemos audio doblado.";
+        let first = "El informe trimestral describe tres riesgos operativos y dos acciones correctivas. La revisión inicial queda cerrada.";
+        let revised = "El informe trimestral describe tres riesgos operativos y dos acciones correctivas. La revisión corregida añade un plan de seguimiento. El comité aprueba el cierre.";
         let mut state = TranscriptState::new();
         state.apply_transcription(first, false);
         let full = state.apply_transcription(revised, true);

@@ -5,8 +5,8 @@
 Defines ONE-SHIP's native speech-to-text dictation: PCM capture through `pw-record`, streaming
 transcription with `models/gemini-3.5-transcribe-live`, provisional interim text, context-aware
 insertion into the focused text field, VAD-driven Live session rollover, and uninterrupted audio
-replay when the WebSocket drops. OpenDictate is no longer part of this path; it remains an external
-tool the user may keep for other applications.
+replay when the WebSocket drops. ONE-SHIP no longer depends on an external dictation daemon; the
+native Live path is the only dictation integration.
 
 | Property | Value |
 | :--- | :--- |
@@ -18,7 +18,7 @@ tool the user may keep for other applications.
 
 In scope: `src-tauri/src/dictation.rs`, `src-tauri/src/audio_capture.rs`, `src/stores/dictationStore.ts`, `src/composables/useVoiceInput.ts`, `src/utils/dictationTargets.ts`, `FloatingChatOverlay.vue`, `ProjectWorkspace.vue`, `useDocumentComments.ts`, and the `[plugins.dictation]` configuration section.
 
-Out of scope: the conversational Global Voice Controller (see [Global Voice Controller](03-global-voice-controller.md)), OpenDictate's D-Bus protocol, local Whisper models, and LLM post-processing/cleanup passes.
+Out of scope: the conversational Global Voice Controller (see [Global Voice Controller](03-global-voice-controller.md)), external dictation daemons and their IPC protocols, local Whisper models, and LLM post-processing/cleanup passes.
 
 ## Model / Design
 
@@ -88,8 +88,8 @@ A new authoritative event is treated as a full-session revision when its word co
 committed transcript is at least 70% and its length is comparable; it then replaces the committed
 text instead of being appended. Prefix checks alone are insufficient because corrections often
 change the first words. Interim hypotheses only replace the provisional display span; the next
-authoritative event or `turnComplete` discards them. This prevents the repeated “audio doblado”
-transcript produced when each corrected full-text revision was concatenated.
+authoritative event or `turnComplete` discards them. This prevents the repeated duplicated-transcript
+symptom produced when each corrected full-text revision was concatenated.
 
 ### Auto-send
 
@@ -177,7 +177,6 @@ to the Vue frontend. A legacy plaintext key is migrated once and removed from th
 | Microphone lease shared with PTT | Implemented | `src-tauri/src/audio_capture.rs`, `voice_controller.rs` |
 | Contextual `Alt+V`, focused-field insertion, auto-send | Implemented | `useVoiceInput.ts`, `dictationStore.ts`, `dictationTargets.ts` |
 | Keyring API key storage and redaction | Implemented | `secret_store.rs`, `config.rs`, `SettingsModal.vue` |
-| OpenDictate integration removal | Implemented | `kopeng/opendictate.rs` deleted; no D-Bus monitor or commands |
 
 ## Related Specs
 
@@ -186,4 +185,4 @@ to the Vue frontend. A legacy plaintext key is migrated once and removed from th
 * [Configuration Schema and Cascade](../01-architecture/02-configuration-schema-and-cascade.md)
 * [README](README.md)
 
-Supersedes legacy: `04_dictation_and_nlp.md` and the removed OpenDictate IPC spec.
+Supersedes legacy: `04_dictation_and_nlp.md` and the removed external dictation IPC specification.
