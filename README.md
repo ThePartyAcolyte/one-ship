@@ -16,19 +16,19 @@ I borrowed that idea for a smaller problem. The tools I use to work feel broken 
 
 We live in very weird times. We try to balance *artificial intelligence* with *human intelligence*. Many programmers have lost the joy of writing code and while the craftsmen hand-write every line and refuse to let go, the swarm people launch a thousand agents, burning a zillion tokens hoping for the best.
 
-I like to think there is another way: not typing the `for` loop, but still in command of every single desision. A captain, not a gambler.
+I like to think there is another way: not typing the `for` loop, but still in command of every single decision. A captain, not a gambler.
 
 One of the core principles of Mazda's design philosophy is *Jinba Ittai*: person and horse as one body. ONE-SHIP is the bridge, connecting tools, human and AIs. The runner is still the harness, and ONE-SHIP is the control panel around it, packed with every tool *(I think)* I need. A spaceship built with a lot of tradeoffs, for my ***very personal adventure***.
 
 
 ## What it replaces
 
-Coming from the ERP world, I apreciate *(a little too much)* the value of centralized data and tools. I'm also a maker with ADHD, so keeping my little home lab in order and keeping track of my projects has always been a strugle. This tool is not a replacement for a fully fledged IDE. Is just a different aproach. 
+Coming from the ERP world, I appreciate *(a little too much)* the value of centralized data and tools. I'm also a maker with ADHD, so keeping my little home lab in order and keeping track of my projects has always been a struggle. This tool is not a replacement for a fully fledged IDE. Is just a different approach. 
 
 ## Working inside it
 
-1. **Add or bootstrap a project.** Existing repositories receive read-only reconnaissance from an initializer agent that analyzes the project, proposes an initial config file, organizes documentations and specs, defines the crew (agents personas, that will specialize depending on the project's nature) and sets the initial state. New projects starts with a grill and then go through the same process.
-2. **Talk to the crew across continuous threads.** Agents receive a name, specialty and a portrait. The aproach here is that conversation occurs in a natural *(and TTS ready)* language, much like a colleage would talk to you. The technical stuff is separated in an artifact attached to the message. Underneath, there still a CLI running the agent.
+1. **Add or bootstrap a project.** Existing repositories receive read-only reconnaissance from an initializer agent that analyzes the project, proposes an initial config file, organizes documentation and specs, defines the crew (agents personas that will specialize depending on the project's nature) and sets the initial state. New projects starts with a grill and then go through the same process.
+2. **Talk to the crew across continuous threads.** Agents receive a name, specialty and a portrait. The approach here is that conversation occurs in a natural *(and TTS ready)* language, much like a colleague would talk to you. The technical stuff is separated in an artifact attached to the message. Underneath, there still a CLI running the agent.
 3. **Control everything by voice or UI.** Press `Alt+V` inside any text field to dictate natively with **Gemini 3.5 Transcribe Live**, or outside a field to invoke the **Global Voice Controller** ("Ship Brain") backed by Gemini Live, PipeWire audio, and the **Unified Capability Core** (`capability_discover` / `capability_execute`) across all project domains regardless of which tab is active.
 4. **Delegate, approve, and rotate quota.** Agents delegate tasks through the daemon's PID-attested HTTP MCP bus and block on explicit user approval for privileged actions (GitHub/GitLab draft PRs, deletions, migrations). Multi-account management (`google`, `deepseek`, `claude`) encrypts tokens with AES-256-GCM and rotates model pools when quotas tighten.
 5. **Stay safe with hidden snapshots.** Every agent turn and milestone can be snapshotted onto domain-scoped hidden Git refs (`refs/one-ship/snapshots/`) for per-file diffing and rollback without polluting commit history.
