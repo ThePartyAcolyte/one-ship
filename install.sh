@@ -44,7 +44,7 @@ bootstrap_remote_install() {
 
   export ONESHIP_REPOS_DIR="${ONESHIP_REPOS_DIR:-$HOME/Projects}"
   local rc=0
-  if [[ ! -t 0 && -r /dev/tty ]]; then
+  if [[ ! -t 0 ]] && (: < /dev/tty) 2>/dev/null; then
     "$BOOTSTRAP_TMP_DIR/one-ship/install.sh" "$@" < /dev/tty || rc=$?
   else
     "$BOOTSTRAP_TMP_DIR/one-ship/install.sh" "$@" || rc=$?
