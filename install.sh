@@ -4,11 +4,19 @@ set -euo pipefail
 
 ONESHIP_REPO_URL="${ONESHIP_REPO_URL:-https://github.com/ThePartyAcolyte/one-ship.git}"
 ONESHIP_REPO_BRANCH="${ONESHIP_REPO_BRANCH:-}"
+BOOTSTRAP_TMP_DIR=""
+
+cleanup_bootstrap_tmp() {
+  if [[ -n "${BOOTSTRAP_TMP_DIR:-}" && -d "${BOOTSTRAP_TMP_DIR}" ]]; then
+    rm -rf "${BOOTSTRAP_TMP_DIR}"
+  fi
+}
 
 bootstrap_remote_install() {
-  local tmp_dir=""
-  tmp_dir="$(mktemp -d -t one-ship-install.XXXXXX)"
-  trap 'rm -rf "$tmp_dir"' EXIT INT TERM
+  local cache_root="${XDG_CACHE_HOME:-$HOME/.cache}"
+  mkdir -p "$cache_root"
+  BOOTSTRAP_TMP_DIR="$(mktemp -d "$cache_root/one-ship-install.XXXXXX")"
+  trap cleanup_bootstrap_tmp EXIT INT TERM
 
   if ! command -v git >/dev/null 2>&1; then
     printf '[info]  Installing git for bootstrap clone...\n'
@@ -26,21 +34,22 @@ bootstrap_remote_install() {
     fi
   fi
 
-  printf '[info]  Cloning ONE-SHIP into temporary workspace...\n'
+  printf '[info]  Cloning ONE-SHIP into temporary workspace (%s)...\n' "$BOOTSTRAP_TMP_DIR"
   local -a clone_args=(git clone --depth 1)
   if [[ -n "$ONESHIP_REPO_BRANCH" ]]; then
     clone_args+=(--branch "$ONESHIP_REPO_BRANCH")
   fi
-  clone_args+=("$ONESHIP_REPO_URL" "$tmp_dir/one-ship")
+  clone_args+=("$ONESHIP_REPO_URL" "$BOOTSTRAP_TMP_DIR/one-ship")
   "${clone_args[@]}"
 
   export ONESHIP_REPOS_DIR="${ONESHIP_REPOS_DIR:-$HOME/Projects}"
+  local rc=0
   if [[ ! -t 0 && -r /dev/tty ]]; then
-    "$tmp_dir/one-ship/install.sh" "$@" < /dev/tty
+    "$BOOTSTRAP_TMP_DIR/one-ship/install.sh" "$@" < /dev/tty || rc=$?
   else
-    "$tmp_dir/one-ship/install.sh" "$@"
+    "$BOOTSTRAP_TMP_DIR/one-ship/install.sh" "$@" || rc=$?
   fi
-  exit $?
+  exit "$rc"
 }
 
 SCRIPT_SOURCE="${BASH_SOURCE[0]:-}"
@@ -589,7 +598,16 @@ build_and_install_core() {
   run_shell_dir "$SCRIPT_DIR" npm run build
 
   log_info "Building Rust release binaries (one-ship + oneship-daemon)..."
-  run_cmd cargo build --release --manifest-path "$SCRIPT_DIR/src-tauri/Cargo.toml" --features tauri/custom-protocol --bin one-ship --bin oneship-daemon
+  local -a cargo_jobs=()
+  local mem_kb=0
+  if [[ -r /proc/meminfo ]]; then
+    mem_kb="$(awk '/^MemTotal:/ {print $2; exit}' /proc/meminfo || true)"
+  fi
+  if [[ "$mem_kb" =~ ^[0-9]+$ ]] && (( mem_kb <= 10485760 )); then
+    log_info "Detected <= 10 GiB RAM; capping Rust build parallelism to -j 2 to prevent OOM."
+    cargo_jobs=(-j 2)
+  fi
+  run_cmd cargo build --release "${cargo_jobs[@]}" --manifest-path "$SCRIPT_DIR/src-tauri/Cargo.toml" --features tauri/custom-protocol --bin one-ship --bin oneship-daemon
 
   log_info "Installing binaries and templates into $PREFIX ..."
   run_cmd install -d "$bin_dir" "$templates_dest" "$desktop_dir" "$systemd_user_dir"
