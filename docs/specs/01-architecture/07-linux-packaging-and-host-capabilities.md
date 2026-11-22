@@ -70,10 +70,10 @@ Distribution uses two primary channels:
   - `ProjectConfigPanel.vue` and `SettingsModal.vue` hide unavailable plugin categories and filter runner dropdowns to `installed_runners` (while keeping already-configured values selectable).
   - `ProjectConfigPanel.vue` surfaces a single missing-integration warning when an imported project's `rula.toml` enables a feature unavailable on the host; `SettingsModal.vue` includes an **Integrations** tab for capability inspection, custom binary overrides, and live refresh.
 - **Gemini credential storage (`secret_store.rs`):**
-  - The API key lives in the FreeDesktop Secret Service (`secret-tool`, `service=one-ship`, `username=gemini_api_key`), read into a daemon cache at startup.
+  - The API key lives in the FreeDesktop Secret Service (`org.freedesktop.secrets` over D-Bus via the `secret-service` crate, `service=one-ship`, `username=gemini_api_key`), read into a daemon cache at startup.
   - `get_global_config` omits the key; `save_global_config` rejects plaintext key writes; Settings exposes a password field plus Save/Clear.
   - A legacy plaintext key is migrated once to the keyring and removed from `config.toml`. If the keyring is unavailable, the error is surfaced to the UI and the audio/dictation commands return typed errors.
-  - `secret-tool` is Linux-only; a future macOS/Windows port replaces the backend behind the same `SecretKind` interface.
+  - `secret-service` is Linux-only; a future macOS/Windows port replaces the backend behind the same `SecretKind` interface.
 
 ### Unified Omarchy bar widget
 

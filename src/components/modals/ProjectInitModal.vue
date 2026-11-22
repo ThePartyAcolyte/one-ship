@@ -42,6 +42,13 @@ const {
   effortOptions,
 } = pairPicker;
 
+const missingRunnerGate = computed(() => coreStore.hostCapabilities !== null && !coreStore.hasAnyRunner);
+
+function openSetupAndClose() {
+  coreStore.requestOpenSetupModal();
+  emit('close');
+}
+
 watch(
   () => [props.show, props.project],
   async ([show]) => {
@@ -130,7 +137,7 @@ async function handleStart() {
     class="fixed inset-0 ui-overlay-backdrop flex items-center justify-center z-50 p-4 font-mono select-none"
     @click.self="emit('close')"
   >
-    <div class="bg-[var(--bg-color)] border border-[var(--border-color)] w-full max-w-xl flex flex-col shadow-2xl overflow-hidden">
+    <div class="ui-surface-modal border border-[var(--border-color)] w-full max-w-xl flex flex-col shadow-2xl overflow-hidden">
       <!-- Header Bar -->
       <div class="p-3 border-b border-[var(--border-color)] flex items-center justify-between bg-black/40 gap-2">
         <div class="flex items-center gap-2 min-w-0">
@@ -255,6 +262,21 @@ async function handleStart() {
           </div>
         </div>
 
+        <!-- Missing Runner Gate Banner -->
+        <div
+          v-if="missingRunnerGate"
+          class="p-2.5 bg-[var(--status-warn-bg)] border border-[var(--status-warn-border)] text-[var(--status-warn-color)] text-[10px] flex items-center justify-between gap-2"
+        >
+          <span>Install at least one AI CLI runner before initializing orchestration.</span>
+          <button
+            type="button"
+            @click="openSetupAndClose"
+            class="px-2 py-1 border border-[var(--status-warn-border)] bg-[var(--bg-color)] text-[var(--status-warn-color)] hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] text-[9px] font-bold uppercase shrink-0 cursor-pointer"
+          >
+            Setup &amp; Readiness
+          </button>
+        </div>
+
         <!-- Error Message -->
         <div v-if="errorMessage" class="p-2 border border-[var(--status-error-border)] bg-[var(--status-error-bg)] text-[var(--status-error-color)] text-[10px] leading-tight">
           {{ errorMessage }}
@@ -275,7 +297,7 @@ async function handleStart() {
         <button
           type="button"
           @click="handleStart"
-          :disabled="isSubmitting"
+          :disabled="isSubmitting || missingRunnerGate"
           class="border border-[var(--accent-color)] bg-[var(--accent-color)]/20 hover:bg-[var(--accent-color)]/30 text-[var(--accent-color)] font-bold px-4 py-1.5 text-xs transition-colors cursor-pointer flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Loader2 v-if="isSubmitting" :size="13" class="animate-spin" />

@@ -1755,10 +1755,10 @@ onUnmounted(() => {
           </div>
 
           <!-- Send / Stop Dynamic Button -->
-          <AppTooltip :text="isWorking ? (inputText.trim() ? 'Stop execution & send correction [Enter]' : 'Stop execution [Esc]') : 'Send message [Enter]'" class="shrink-0 self-end">
+          <AppTooltip :text="!isWorking && coreStore.hostCapabilities !== null && !coreStore.hasAnyRunner ? 'Install an AI CLI runner in Setup & Readiness first' : (isWorking ? (inputText.trim() ? 'Stop execution & send correction [Enter]' : 'Stop execution [Esc]') : 'Send message [Enter]')" class="shrink-0 self-end">
             <button
               type="button"
-              :disabled="!agentId || (!isWorking && !inputText.trim() && explorerStore.attachedReviewFiles.length === 0)"
+              :disabled="!agentId || (!isWorking && ((coreStore.hostCapabilities !== null && !coreStore.hasAnyRunner) || (!inputText.trim() && explorerStore.attachedReviewFiles.length === 0)))"
               class="w-8 h-8 border transition-colors cursor-pointer shrink-0 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center"
               :class="isWorking
                 ? (inputText.trim()

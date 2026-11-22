@@ -649,6 +649,93 @@ pub async fn ensure_projects_root_dir(path: String) -> Result<String, Diagnostic
     Ok(canonical_str)
 }
 
+/// Allowlisted interactive setup actions executed in `system.preferred_terminal`.
+#[derive(Deserialize, Debug, Clone, Copy, PartialEq, Eq, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export)]
+pub enum SetupTerminalAction {
+    GhAuthLogin,
+    InstallRunnerClaude,
+    InstallRunnerOpencode,
+    InstallRunnerAgy,
+    InstallOptionalRea,
+    InstallOptionalElectronics,
+    InstallOptionalDesigma,
+    InstallOptionalPcbcraft,
+}
+
+/// Arguments for `run_setup_terminal_action`.
+#[derive(Deserialize, Debug, TS)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(export)]
+pub struct RunSetupTerminalActionArgs {
+    pub action: SetupTerminalAction,
+}
+
+fn build_setup_action_script(action: SetupTerminalAction) -> String {
+    let pm = detect_host_package_manager();
+    let projects_root = crate::config::resolve_effective_string(None, None, "system", "default_projects_root_path");
+    let body = match action {
+        SetupTerminalAction::GhAuthLogin => "gh auth login".to_string(),
+        SetupTerminalAction::InstallRunnerClaude => "npm install -g @anthropic-ai/claude-code".to_string(),
+        SetupTerminalAction::InstallRunnerOpencode => "curl -fsSL https://opencode.ai/install | bash".to_string(),
+        SetupTerminalAction::InstallRunnerAgy => "curl -fsSL https://antigravity.google/cli/install.sh | bash".to_string(),
+        SetupTerminalAction::InstallOptionalRea => {
+            let sys_cmd = match pm {
+                Some(LinuxPackageManager::Pacman) => "sudo pacman -S --needed radare2 binutils binwalk squashfs-tools jadx",
+                Some(LinuxPackageManager::Apt) => "sudo apt-get update && sudo apt-get install -y radare2 binutils binwalk squashfs-tools",
+                Some(LinuxPackageManager::Dnf) => "sudo dnf install -y radare2 binutils binwalk squashfs-tools",
+                Some(LinuxPackageManager::Zypper) => "sudo zypper install -y radare2 binutils binwalk squashfs-tools",
+                None => "echo 'No supported package manager detected; skipping distro packages.'",
+            };
+            format!("{sys_cmd} && npm install -g --prefix \"$HOME/.local\" rea-agents@latest")
+        }
+        SetupTerminalAction::InstallOptionalElectronics => match pm {
+            Some(LinuxPackageManager::Pacman) => "sudo pacman -S --needed ngspice sigrok-cli",
+            Some(LinuxPackageManager::Apt) => "sudo apt-get update && sudo apt-get install -y ngspice sigrok-cli",
+            Some(LinuxPackageManager::Dnf) => "sudo dnf install -y ngspice sigrok-cli",
+            Some(LinuxPackageManager::Zypper) => "sudo zypper install -y ngspice sigrok-cli",
+            None => "echo 'No supported package manager detected.'",
+        }
+        .to_string(),
+        SetupTerminalAction::InstallOptionalDesigma => format!(
+            "mkdir -p '{root}' && if [ -d '{root}/desigma/.git' ]; then git -C '{root}/desigma' pull --ff-only; else git clone --branch oneship https://github.com/ThePartyAcolyte/desigma.git '{root}/desigma'; fi && cargo build --release --manifest-path '{root}/desigma/Cargo.toml' -p desigma-app -p desigma-mcp && install -d \"$HOME/.local/bin\" && install -m 0755 '{root}/desigma/target/release/oneship-designer' \"$HOME/.local/bin/oneship-designer\" && install -m 0755 '{root}/desigma/target/release/desigma-mcp' \"$HOME/.local/bin/desigma-mcp\"",
+            root = projects_root.replace('\'', "'\\''")
+        ),
+        SetupTerminalAction::InstallOptionalPcbcraft => format!(
+            "mkdir -p '{root}' && if [ -d '{root}/pcbcraft/.git' ]; then git -C '{root}/pcbcraft' pull --ff-only; else git clone --branch main https://github.com/tangency-labs/pcbcraft.git '{root}/pcbcraft'; fi && CARGO_PROFILE_RELEASE_LTO=false CARGO_PROFILE_RELEASE_CODEGEN_UNITS=4 cargo build --release -j 2 --manifest-path '{root}/pcbcraft/Cargo.toml' -p pcbcraft -p pcbcraft-cli && install -d \"$HOME/.local/bin\" && install -m 0755 '{root}/pcbcraft/target/release/pcbcraft' \"$HOME/.local/bin/pcbcraft\" && install -m 0755 '{root}/pcbcraft/target/release/pcbcraft-cli' \"$HOME/.local/bin/pcbcraft-cli\"",
+            root = projects_root.replace('\'', "'\\''")
+        ),
+    };
+    format!("{body}; printf '\\n[ONE-SHIP] Finished (exit %s). Press Enter to close... ' \"$?\"; read -r _")
+}
+
+/// Daemon command `run_setup_terminal_action`: launches `system.preferred_terminal` executing
+/// an allowlisted setup/auth/installer command. Returns the resolved terminal name.
+pub async fn run_setup_terminal_action(action: SetupTerminalAction) -> Result<String, DiagnosticError> {
+    crate::logger::log("INFO", "diagnostic", &format!("run_setup_terminal_action: {:?}", action));
+    tokio::task::spawn_blocking(move || {
+        let configured_term = crate::config::resolve_effective_string(None, None, "system", "preferred_terminal");
+        let Some((term_name, term_path)) = crate::desktop::resolve_preferred_terminal(&configured_term) else {
+            return Err(DiagnosticError::InvalidInput(format!(
+                "No supported terminal emulator found on PATH (configured '{}')",
+                configured_term
+            )));
+        };
+        let script = build_setup_action_script(action);
+        let term_str = term_path.to_string_lossy().into_owned();
+        let mut cmd = crate::desktop::desktop_command(&term_str);
+        cmd.args(crate::desktop::build_terminal_shell_args(&term_name, &script));
+        cmd.spawn().map_err(|e| DiagnosticError::Spawn {
+            program: term_name.clone(),
+            source: e,
+        })?;
+        Ok(term_name)
+    })
+    .await
+    .map_err(|e| DiagnosticError::Task(e.to_string()))?
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

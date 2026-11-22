@@ -272,8 +272,19 @@ fn is_executable_file(path: &std::path::Path) -> bool {
     }
 }
 
+/// Standard user-local binary directories checked after `PATH` so tools installed while the
+/// daemon is running (e.g. `agy`, `opencode`, `claude`, `rea`) are detected without restarting.
+const EXTRA_USER_BIN_DIRS: &[&str] = &[
+    ".local/bin",
+    ".cargo/bin",
+    ".opencode/bin",
+    ".antigravity/bin",
+    ".npm-global/bin",
+];
+
 /// Resolves an executable configured as either an explicit path (containing a separator) or a
-/// bare command name searched across `PATH`. Returns `None` if empty or not found/executable.
+/// bare command name searched across `PATH` and standard user-local bin directories.
+/// Returns `None` if empty or not found/executable.
 pub fn resolve_executable(configured: &str) -> Option<std::path::PathBuf> {
     let trimmed = configured.trim();
     if trimmed.is_empty() {
@@ -283,11 +294,21 @@ pub fn resolve_executable(configured: &str) -> Option<std::path::PathBuf> {
     if candidate.components().count() > 1 || candidate.is_absolute() {
         return is_executable_file(candidate).then(|| candidate.to_path_buf());
     }
-    let path_var = std::env::var_os("PATH")?;
-    for dir in std::env::split_paths(&path_var) {
-        let joined = dir.join(trimmed);
-        if is_executable_file(&joined) {
-            return Some(joined);
+    if let Some(path_var) = std::env::var_os("PATH") {
+        for dir in std::env::split_paths(&path_var) {
+            let joined = dir.join(trimmed);
+            if is_executable_file(&joined) {
+                return Some(joined);
+            }
+        }
+    }
+    if let Some(home) = std::env::var_os("HOME") {
+        let home_path = std::path::PathBuf::from(home);
+        for rel in EXTRA_USER_BIN_DIRS {
+            let joined = home_path.join(rel).join(trimmed);
+            if is_executable_file(&joined) {
+                return Some(joined);
+            }
         }
     }
     None
@@ -300,6 +321,8 @@ const FALLBACK_TERMINALS: &[&str] = &[
     "alacritty",
     "foot",
     "wezterm",
+    "ptyxis",
+    "kgx",
     "gnome-terminal",
     "konsole",
     "xfce4-terminal",
@@ -339,9 +362,19 @@ pub fn resolve_preferred_terminal(configured: &str) -> Option<(String, std::path
 pub fn build_terminal_exec_args<'a>(term_name: &str, command: &'a str) -> Vec<&'a str> {
     match term_name {
         "wezterm" => vec!["start", "--", command],
-        "gnome-terminal" => vec!["--", command],
+        "gnome-terminal" | "ptyxis" | "kgx" => vec!["--", command],
         "foot" => vec![command],
         _ => vec!["-e", command],
+    }
+}
+
+/// Builds the terminal-specific arguments required to execute a shell `script` via `sh -c`.
+pub fn build_terminal_shell_args<'a>(term_name: &str, script: &'a str) -> Vec<&'a str> {
+    match term_name {
+        "wezterm" => vec!["start", "--", "sh", "-c", script],
+        "gnome-terminal" | "ptyxis" | "kgx" => vec!["--", "sh", "-c", script],
+        "foot" => vec!["sh", "-c", script],
+        _ => vec!["-e", "sh", "-c", script],
     }
 }
 

@@ -71,7 +71,7 @@ async function handleReject() {
     v-if="pending"
     class="fixed inset-0 ui-overlay-backdrop flex items-center justify-center z-50 p-4 font-mono"
   >
-    <div class="bg-[var(--bg-color)] border border-[var(--status-warn-border)] w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl text-[var(--fg-color)]">
+    <div class="ui-surface-modal border border-[var(--status-warn-border)] w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl text-[var(--fg-color)]">
       <!-- Modal Header -->
       <div class="border-b border-[var(--status-warn-border)] px-4 py-2.5 flex items-center justify-between bg-[var(--status-warn-bg)]">
         <div class="flex items-center gap-2 text-xs min-w-0">

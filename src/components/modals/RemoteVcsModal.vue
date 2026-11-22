@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { Cloud, X, ExternalLink, AlertTriangle, Download, GitBranch } from '@lucide/vue';
+import { Cloud, X, ExternalLink, AlertTriangle, Download, GitBranch, Terminal } from '@lucide/vue';
 import { AppInput, AppTooltip } from '../ui';
 import type { ProjectRecord } from '../../types';
 import type { GithubRepo as GitHubRepo } from '../../types/generated/GithubRepo';
@@ -31,6 +31,18 @@ const githubSearchQuery = ref('');
 const githubRepos = ref<GitHubRepo[]>([]);
 const githubLoading = ref(false);
 const forkPromptRepo = ref<GitHubRepo | null>(null);
+const launchingGhAuth = ref(false);
+
+async function launchGhAuthInTerminal() {
+  launchingGhAuth.value = true;
+  try {
+    await daemonCall('run_setup_terminal_action', { action: 'gh_auth_login' });
+  } catch (err: unknown) {
+    console.error('Failed to launch gh auth login:', err);
+  } finally {
+    launchingGhAuth.value = false;
+  }
+}
 
 // GitLab state
 const gitlabSearchQuery = ref('');
@@ -209,7 +221,7 @@ async function executeCreateRepo() {
 
 <template>
   <div v-if="project" class="fixed inset-0 ui-overlay-backdrop flex items-center justify-center z-50 p-4 font-mono">
-    <div class="bg-[var(--bg-color)] border border-[var(--border-color)] p-5 max-w-xl w-full flex flex-col gap-3 shadow-2xl">
+    <div class="ui-surface-modal border border-[var(--border-color)] p-5 max-w-xl w-full flex flex-col gap-3 shadow-2xl">
       <!-- Header -->
       <div class="flex justify-between items-center border-b border-[var(--border-color)] pb-2.5">
         <h3 class="font-bold uppercase tracking-widest text-[var(--accent-color)] text-xs flex items-center gap-2">
@@ -333,6 +345,25 @@ async function executeCreateRepo() {
           >
             <Download :size="11" />
             <span>{{ isInstallingTools ? 'INSTALLING...' : 'INSTALL GITHUB-CLI' }}</span>
+          </button>
+        </div>
+
+        <!-- Contextual Unauthenticated GitHub Banner -->
+        <div v-else-if="!diagnostics?.gh_authenticated" class="border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 flex items-center justify-between gap-3 text-xs">
+          <div class="flex items-center gap-2">
+            <AlertTriangle :size="16" class="text-[var(--status-warn-color)] shrink-0" />
+            <span class="text-[11px] text-[var(--fg-color)]">
+              GitHub CLI (<code class="text-[var(--accent-color)]">gh</code>) is not authenticated. Sign in to search or create GitHub repositories.
+            </span>
+          </div>
+          <button
+            type="button"
+            @click="launchGhAuthInTerminal"
+            :disabled="launchingGhAuth"
+            class="px-2.5 py-1 text-[10px] font-bold border border-[var(--status-warn-border)] bg-[var(--bg-color)] text-[var(--status-warn-color)] hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] transition-colors cursor-pointer shrink-0 flex items-center gap-1.5 disabled:opacity-40"
+          >
+            <Terminal :size="11" />
+            <span>{{ launchingGhAuth ? 'OPENING...' : 'AUTH IN TERMINAL' }}</span>
           </button>
         </div>
 
@@ -482,6 +513,25 @@ async function executeCreateRepo() {
           >
             <Download :size="11" />
             <span>{{ isInstallingTools ? 'INSTALLING...' : 'INSTALL GLAB' }}</span>
+          </button>
+        </div>
+
+        <!-- Contextual Unauthenticated GitHub Banner -->
+        <div v-else-if="!diagnostics?.gh_authenticated" class="border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] p-3 flex items-center justify-between gap-3 text-xs">
+          <div class="flex items-center gap-2">
+            <AlertTriangle :size="16" class="text-[var(--status-warn-color)] shrink-0" />
+            <span class="text-[11px] text-[var(--fg-color)]">
+              GitHub CLI (<code class="text-[var(--accent-color)]">gh</code>) is not authenticated. Sign in to search or create GitHub repositories.
+            </span>
+          </div>
+          <button
+            type="button"
+            @click="launchGhAuthInTerminal"
+            :disabled="launchingGhAuth"
+            class="px-2.5 py-1 text-[10px] font-bold border border-[var(--status-warn-border)] bg-[var(--bg-color)] text-[var(--status-warn-color)] hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] transition-colors cursor-pointer shrink-0 flex items-center gap-1.5 disabled:opacity-40"
+          >
+            <Terminal :size="11" />
+            <span>{{ launchingGhAuth ? 'OPENING...' : 'AUTH IN TERMINAL' }}</span>
           </button>
         </div>
 

@@ -310,6 +310,11 @@ const activeConversations = computed(() => {
 
 // Launch and Open Agent action
 async function handleLaunchAndOpenAgent(agentId: string) {
+  if (coreStore.hostCapabilities !== null && !coreStore.hasAnyRunner) {
+    coreStore.addStatusLog('Cannot launch agent: install an AI CLI runner in Setup & Readiness first.');
+    coreStore.requestOpenSetupModal();
+    return;
+  }
   showAgentLauncher.value = false;
   layoutStore.openFloatingChat(agentId, activeProject.value?.path);
 
@@ -606,8 +611,8 @@ onUnmounted(() => {
                 <span v-else-if="getAgentTransient(ag.id) === 'error'" class="text-[var(--status-error-color)]">[✗ FAIL]</span>
                 <span v-else class="text-[var(--status-ok-color)] opacity-80">[IDLE]</span>
               </span>
-              <span v-else class="text-[8px] text-[var(--accent-color)] opacity-70 shrink-0">
-                +LAUNCH
+              <span v-else class="text-[8px] shrink-0" :class="coreStore.hostCapabilities !== null && !coreStore.hasAnyRunner ? 'text-[var(--status-warn-color)] opacity-80' : 'text-[var(--accent-color)] opacity-70'">
+                {{ coreStore.hostCapabilities !== null && !coreStore.hasAnyRunner ? 'NO RUNNER' : '+LAUNCH' }}
               </span>
 
               <span class="text-[8px] text-[var(--dim-color)] opacity-60 font-mono hidden sm:inline">

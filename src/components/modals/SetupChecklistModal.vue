@@ -10,15 +10,19 @@ import {
   Wrench,
   RefreshCw,
   Download,
+  ExternalLink,
   Settings,
   Loader2,
 } from '@lucide/vue';
 import { open } from '@tauri-apps/plugin-dialog';
+import { openUrl } from '@tauri-apps/plugin-opener';
 import type { DiagnosticState } from '../../types';
+import type { SetupTerminalAction } from '../../types/generated/SetupTerminalAction';
 import { useCoreStore } from '../../stores/coreStore';
 import { daemonCall } from '../../utils/daemonClient';
 import { AppInput, AppTooltip } from '../ui';
 import {
+  getRecommendedSolidcraftPackage,
   INTEGRATION_INSTALL_GUIDES,
   ONBOARDING_DISMISSED_KEY,
   RUNNER_INSTALL_GUIDES,
@@ -49,6 +53,7 @@ const isSavingGitIdentity = ref(false);
 const gitStatusMsg = ref<string | null>(null);
 
 const isRefreshingRunners = ref(false);
+const launchingAction = ref<SetupTerminalAction | null>(null);
 const dontShowAgain = ref(false);
 const actionError = ref<string | null>(null);
 
@@ -58,7 +63,12 @@ const hasGitIdentity = computed(() =>
   Boolean(props.diagnostics?.git_user_name?.trim() && props.diagnostics?.git_user_email?.trim())
 );
 const projectsRootReady = computed(() => Boolean(props.diagnostics?.projects_root_exists));
-const integrationsList = computed(() => coreStore.hostCapabilities?.integrations ?? []);
+const integrationsList = computed(() =>
+  (coreStore.hostCapabilities?.integrations ?? []).filter((item) => item.plugin_id !== 'voice_controller')
+);
+const solidcraftRecommendation = computed(() =>
+  getRecommendedSolidcraftPackage(coreStore.hostCapabilities?.package_manager)
+);
 
 watch(
   () => [props.show, props.diagnostics] as const,
@@ -141,6 +151,33 @@ async function refreshAll() {
   }
 }
 
+async function launchTerminalAction(action: SetupTerminalAction) {
+  launchingAction.value = action;
+  actionError.value = null;
+  try {
+    await daemonCall('run_setup_terminal_action', { action });
+  } catch (err: unknown) {
+    actionError.value = err instanceof Error ? err.message : String(err);
+  } finally {
+    launchingAction.value = null;
+  }
+}
+
+async function openSolidcraftDownload() {
+  actionError.value = null;
+  try {
+    await openUrl('https://solidcraft.io/download/');
+  } catch (err: unknown) {
+    actionError.value = err instanceof Error ? err.message : String(err);
+  }
+}
+
+function handleWindowFocus() {
+  if (props.show && !isRefreshingRunners.value) {
+    void refreshAll();
+  }
+}
+
 function toggleDontShowAgain(checked: boolean) {
   dontShowAgain.value = checked;
   if (checked) {
@@ -159,10 +196,12 @@ function handleKeydown(e: KeyboardEvent) {
 
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown, { capture: true });
+  window.addEventListener('focus', handleWindowFocus);
 });
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown, { capture: true });
+  window.removeEventListener('focus', handleWindowFocus);
 });
 </script>
 
@@ -301,6 +340,16 @@ onUnmounted(() => {
                 <Download :size="10" />
                 <span>Install gh</span>
               </button>
+              <button
+                v-else-if="diagnostics && diagnostics.gh_installed && !diagnostics.gh_authenticated"
+                type="button"
+                @click="launchTerminalAction('gh_auth_login')"
+                :disabled="launchingAction !== null"
+                class="px-2 py-0.5 border border-[var(--border-color)] hover:border-[var(--accent-color)] text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer disabled:opacity-40"
+              >
+                <Terminal :size="10" />
+                <span>Auth in Terminal</span>
+              </button>
             </div>
             <button
               type="button"
@@ -342,9 +391,19 @@ onUnmounted(() => {
               <div class="flex items-center gap-2 min-w-0">
                 <Check v-if="installedRunners.includes(r.id)" :size="12" class="text-[var(--status-ok-color)] shrink-0" />
                 <AlertTriangle v-else :size="12" class="text-[var(--dim-color)] shrink-0" />
-                <span class="font-bold text-[var(--fg-color)]">{{ r.label }}</span>
+                <span class="font-bold text-[var(--fg-color)] shrink-0">{{ r.label }}</span>
+                <code class="text-[9px] text-[var(--dim-color)] truncate">{{ r.hint }}</code>
               </div>
-              <code class="text-[9px] text-[var(--dim-color)] truncate">{{ r.hint }}</code>
+              <button
+                v-if="!installedRunners.includes(r.id)"
+                type="button"
+                @click="launchTerminalAction(r.installAction)"
+                :disabled="launchingAction !== null"
+                class="px-2 py-0.5 border border-[var(--border-color)] hover:border-[var(--accent-color)] text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer shrink-0 disabled:opacity-40"
+              >
+                <Terminal :size="10" />
+                <span>Install in Terminal</span>
+              </button>
             </div>
           </div>
         </section>
@@ -366,7 +425,7 @@ onUnmounted(() => {
             </button>
           </div>
           <p class="text-[10px] text-[var(--dim-color)]">
-            Missing subsystems stay hidden automatically. Run these commands from your ONE-SHIP checkout to install any optional workbench:
+            Missing subsystems stay hidden automatically. Install optional workbenches directly from here:
           </p>
           <div class="grid grid-cols-1 gap-1.5">
             <div
@@ -376,17 +435,44 @@ onUnmounted(() => {
             >
               <div class="flex items-center justify-between gap-2">
                 <span class="font-bold text-[var(--fg-color)]">{{ item.label }}</span>
-                <span
-                  class="text-[8px] px-1.5 py-0.5 border font-bold uppercase"
-                  :class="item.available
-                    ? 'border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] text-[var(--status-ok-color)]'
-                    : 'border-[var(--border-color)] text-[var(--dim-color)]'"
-                >
-                  {{ item.available ? 'Ready' : 'Not Installed' }}
-                </span>
+                <div class="flex items-center gap-2">
+                  <button
+                    v-if="!item.available && INTEGRATION_INSTALL_GUIDES[item.plugin_id]?.installAction"
+                    type="button"
+                    @click="launchTerminalAction(INTEGRATION_INSTALL_GUIDES[item.plugin_id].installAction!)"
+                    :disabled="launchingAction !== null"
+                    class="px-2 py-0.5 border border-[var(--border-color)] hover:border-[var(--accent-color)] text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer disabled:opacity-40"
+                  >
+                    <Terminal :size="10" />
+                    <span>Install in Terminal</span>
+                  </button>
+                  <button
+                    v-else-if="!item.available && INTEGRATION_INSTALL_GUIDES[item.plugin_id]?.downloadUrl"
+                    type="button"
+                    @click="openSolidcraftDownload"
+                    class="px-2 py-0.5 border border-[var(--border-color)] hover:border-[var(--accent-color)] text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer"
+                  >
+                    <ExternalLink :size="10" />
+                    <span>Download</span>
+                  </button>
+                  <span
+                    class="text-[8px] px-1.5 py-0.5 border font-bold uppercase"
+                    :class="item.available
+                      ? 'border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] text-[var(--status-ok-color)]'
+                      : 'border-[var(--border-color)] text-[var(--dim-color)]'"
+                  >
+                    {{ item.available ? 'Ready' : 'Not Installed' }}
+                  </span>
+                </div>
               </div>
               <div v-if="INTEGRATION_INSTALL_GUIDES[item.plugin_id]" class="flex flex-wrap items-center justify-between gap-2 text-[9px] text-[var(--dim-color)]">
-                <code>{{ INTEGRATION_INSTALL_GUIDES[item.plugin_id].installCmd }}</code>
+                <span>
+                  {{
+                    item.plugin_id === 'solidcraft' && !item.available
+                      ? `${INTEGRATION_INSTALL_GUIDES[item.plugin_id].summary} ${solidcraftRecommendation}.`
+                      : INTEGRATION_INSTALL_GUIDES[item.plugin_id].summary
+                  }}
+                </span>
                 <span>{{ INTEGRATION_INSTALL_GUIDES[item.plugin_id].sourceLabel }}</span>
               </div>
             </div>

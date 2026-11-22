@@ -27,7 +27,11 @@ import {
 import { AppTooltip, AppInput, AppTextarea, AppEmptyState } from '../ui';
 import GitBranchSelector from './GitBranchSelector.vue';
 import { useWorkspaceLayoutStore } from '../../stores/workspaceLayoutStore';
+import { useCoreStore } from '../../stores/coreStore';
 import { formatIsoTimestamp as formatIso } from '../../utils/format';
+
+const coreStore = useCoreStore();
+const missingGitIdentityGate = computed(() => coreStore.diagnostics !== null && !coreStore.hasGitIdentity);
 
 type VcsActionItem = VcsAction;
 
@@ -898,6 +902,21 @@ onUnmounted(() => {
 <template>
   <div class="flex-1 flex flex-col min-h-0 h-full bg-[var(--bg-color)] font-mono select-none overflow-hidden">
 
+    <!-- Missing Git Identity Gate Banner -->
+    <div
+      v-if="missingGitIdentityGate"
+      class="px-3 py-2 border-b border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] text-[var(--status-warn-color)] text-[10px] flex items-center justify-between gap-2 shrink-0"
+    >
+      <span>Git identity (user.name / user.email) is not configured. Commits and branch operations are disabled.</span>
+      <button
+        type="button"
+        @click="coreStore.requestOpenSetupModal()"
+        class="px-2 py-0.5 border border-[var(--status-warn-border)] bg-[var(--bg-color)] text-[var(--status-warn-color)] hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] text-[9px] font-bold uppercase shrink-0 cursor-pointer"
+      >
+        Configure Git Identity
+      </button>
+    </div>
+
     <!-- ── MAIN DUAL-PANEL COCKPIT BODY ──────────────────────────── -->
     <div class="flex-1 flex min-h-0 divide-x divide-[var(--border-color)] overflow-hidden">
       
@@ -1278,7 +1297,7 @@ onUnmounted(() => {
               <div class="flex items-center gap-1.5">
                 <button
                   @click="handleCommit"
-                  :disabled="isCommitting || !commitMessage.trim() || stagedWorkingTreeFiles.length === 0"
+                  :disabled="isCommitting || missingGitIdentityGate || !commitMessage.trim() || stagedWorkingTreeFiles.length === 0"
                   class="flex-1 h-7 px-2 border border-[var(--accent-color)] bg-[var(--accent-color)]/15 text-[var(--accent-color)] hover:bg-[var(--accent-color)] hover:text-[var(--bg-color)] text-[9px] font-bold uppercase tracking-wider flex items-center justify-center gap-1 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Loader2 v-if="isCommitting" :size="11" class="animate-spin" />

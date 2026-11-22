@@ -509,7 +509,7 @@ const pairProblems = computed<string[]>(() => {
 
 <template>
   <div v-if="show" class="fixed inset-0 ui-overlay-backdrop flex items-center justify-center z-50 p-4">
-    <div class="ui-surface-base border border-[var(--border-color)] shadow-2xl max-w-4xl w-full flex flex-col h-[85vh] overflow-hidden font-mono text-xs">
+    <div class="ui-surface-modal border border-[var(--border-color)] shadow-2xl max-w-4xl w-full flex flex-col h-[85vh] overflow-hidden font-mono text-xs">
       
       <!-- Header: Omnisearch-aligned title + search row -->
       <div class="ui-search-box !border-x-0 !border-t-0 px-4 py-2.5 gap-3 shrink-0">
@@ -637,7 +637,7 @@ const pairProblems = computed<string[]>(() => {
               <div v-if="coreStore.hostCapabilities" class="p-3 border border-[var(--border-color)] ui-surface-card flex flex-wrap items-center gap-3 text-[10px]">
                 <span>Runners: <strong>{{ coreStore.hostCapabilities.installed_runners.join(', ') || 'none detected' }}</strong></span>
                 <span class="text-[var(--dim-color)]">|</span>
-                <span>Keyring: <strong>{{ coreStore.hostCapabilities.keyring_available ? 'Available' : 'Missing secret-tool' }}</strong></span>
+                <span>Keyring: <strong>{{ coreStore.hostCapabilities.keyring_available ? 'Available' : 'Unavailable' }}</strong></span>
                 <span class="text-[var(--dim-color)]">|</span>
                 <span>Clipboard: <strong>{{ coreStore.hostCapabilities.clipboard_available ? 'Available' : 'Missing wl-paste/xclip' }}</strong></span>
                 <span class="text-[var(--dim-color)]">|</span>
@@ -671,7 +671,7 @@ const pairProblems = computed<string[]>(() => {
                 >
                   <span>{{ INTEGRATION_INSTALL_GUIDES[item.plugin_id].summary }}</span>
                   <div class="flex flex-wrap items-center justify-between gap-2 text-[var(--fg-color)]">
-                    <code>{{ INTEGRATION_INSTALL_GUIDES[item.plugin_id].installCmd }}</code>
+                    <span>{{ INTEGRATION_INSTALL_GUIDES[item.plugin_id].downloadUrl ? 'Prebuilt package (Setup & Readiness)' : 'Install via Setup & Readiness' }}</span>
                     <span class="text-[var(--dim-color)]">{{ INTEGRATION_INSTALL_GUIDES[item.plugin_id].sourceLabel }}</span>
                   </div>
                 </div>
@@ -762,7 +762,7 @@ const pairProblems = computed<string[]>(() => {
                     <span class="text-[9px] text-[var(--dim-color)]">
                       <template v-if="secretStatus?.configured">Configured in the OS keyring (hidden).</template>
                       <template v-else>Not configured.</template>
-                      <template v-if="secretStatus && !secretStatus.keyringAvailable"> Secret Service (secret-tool) is unavailable.</template>
+                      <template v-if="secretStatus && !secretStatus.keyringAvailable"> OS Secret Service is unavailable.</template>
                       <template v-if="secretStatus?.error"> {{ secretStatus.error }}</template>
                     </span>
                   </div>

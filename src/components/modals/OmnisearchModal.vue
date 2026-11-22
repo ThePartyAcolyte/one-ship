@@ -240,7 +240,7 @@ onUnmounted(() => {
     class="fixed inset-0 ui-overlay-backdrop flex items-start justify-center z-50 p-4 pt-16 sm:pt-24 font-mono select-none"
     @click.self="emit('close')"
   >
-    <div class="bg-[var(--bg-color)] border border-[var(--border-color)] max-w-3xl w-full flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+    <div class="ui-surface-modal border border-[var(--border-color)] max-w-3xl w-full flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
       
       <!-- Top Search Bar -->
       <div class="ui-search-box !border-x-0 !border-t-0 px-4 py-3 gap-3">

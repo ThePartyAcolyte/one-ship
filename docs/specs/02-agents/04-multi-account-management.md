@@ -28,7 +28,7 @@ System Keyring (single slot: service=gemini, username=antigravity)
 Active status is partitioned per provider (`UPDATE accounts SET is_active = 0 WHERE provider = ?`). Users can maintain an active Google, DeepSeek, and Claude account in parallel without collision.
 
 1. **Google Antigravity (`google`):**
-   - Stores OAuth2 JSON in the FreeDesktop Secret Service keyring under `(service=gemini, username=antigravity)`, accessed via `libsecret` (`secret-service` crate / `secret-tool`):
+   - Stores OAuth2 JSON in the FreeDesktop Secret Service keyring under `(service=gemini, username=antigravity)`, accessed natively over D-Bus via the `secret-service` crate:
      ```json
      {
        "token": {
@@ -127,7 +127,7 @@ Keyring payload written on swap forces an immediate access-token refresh on the 
 
 `initiate_add_account`:
 1. Reads and retains the current keyring blob in memory.
-2. Clears `(service=gemini, username=antigravity)` via `libsecret`.
+2. Clears `(service=gemini, username=antigravity)` via `secret-service`.
 3. Spawns `system.preferred_terminal` (default `"ghostty"`) running `agy` (`ghostty`, `foot`, `kitty`, `alacritty` -> `-e`; `wezterm` -> `start --`).
 4. Waits up to 5 minutes for `new-account-detected` from the keyring watcher.
 5. Closes the terminal child (`kill(child_pid)`), restores the preserved original keyring blob, and emits/notifies success (or timeout with DB untouched).

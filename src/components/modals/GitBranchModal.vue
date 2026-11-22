@@ -12,6 +12,7 @@ import {
   Loader2,
 } from '@lucide/vue';
 import { AppInput, AppSelect, AppToggle, AppTooltip, type SelectOption } from '../ui';
+import { useCoreStore } from '../../stores/coreStore';
 import { useProjectMgmtStore } from '../../stores/projectMgmtStore';
 import { useForgeCollabStore } from '../../stores/forgeCollabStore';
 import type { ProjectRecord } from '../../types';
@@ -24,8 +25,15 @@ const emit = defineEmits<{
   (e: 'close'): void;
 }>();
 
+const coreStore = useCoreStore();
 const store = useProjectMgmtStore();
 const githubStore = useForgeCollabStore();
+const missingGitIdentityGate = computed(() => coreStore.diagnostics !== null && !coreStore.hasGitIdentity);
+
+function openSetupAndClose() {
+  coreStore.requestOpenSetupModal();
+  emit('close');
+}
 
 const searchQuery = ref('');
 const showOriginRemotes = ref(false);
@@ -141,7 +149,7 @@ onUnmounted(() => {
       class="fixed inset-0 ui-overlay-backdrop flex items-center justify-center z-50 p-4 font-mono"
       @click.self="emit('close')"
     >
-      <div class="bg-[var(--bg-color)] border border-[var(--border-color)] w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl text-[var(--fg-color)]">
+      <div class="ui-surface-modal border border-[var(--border-color)] w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl text-[var(--fg-color)]">
         <!-- Header -->
         <div class="px-4 py-2.5 border-b border-[var(--border-color)] bg-[var(--ui-bg-card)]/60 flex items-center justify-between gap-2 shrink-0">
           <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--accent-color)] min-w-0">
@@ -167,6 +175,21 @@ onUnmounted(() => {
         >
           <AlertCircle :size="13" class="shrink-0" />
           <span class="break-words">{{ localError }}</span>
+        </div>
+
+        <!-- Missing Git Identity Gate Banner -->
+        <div
+          v-if="missingGitIdentityGate"
+          class="px-4 py-2 border-b border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] text-[var(--status-warn-color)] text-[10px] flex items-center justify-between gap-2 shrink-0"
+        >
+          <span>Configure Git user.name and user.email before creating or switching branches.</span>
+          <button
+            type="button"
+            @click="openSetupAndClose"
+            class="px-2 py-0.5 border border-[var(--status-warn-border)] bg-[var(--bg-color)] text-[var(--status-warn-color)] hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] text-[9px] font-bold uppercase shrink-0 cursor-pointer"
+          >
+            Setup &amp; Readiness
+          </button>
         </div>
 
         <!-- Search Filter -->
@@ -282,7 +305,7 @@ onUnmounted(() => {
           <div class="flex justify-end">
             <button
               type="button"
-              :disabled="!newBranchName.trim() || isSwitching"
+              :disabled="!newBranchName.trim() || isSwitching || missingGitIdentityGate"
               @click="handleCreateBranch"
               class="px-3 py-1.5 text-[10px] font-bold uppercase border border-[var(--accent-color)] bg-[var(--accent-color)] text-black hover:opacity-90 cursor-pointer disabled:opacity-40 flex items-center gap-1.5"
             >

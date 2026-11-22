@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from "vue";
+import { ref, onMounted, onUnmounted, computed, watch } from "vue";
 import { reportAsyncFailure } from "./utils/reportAsyncFailure";
 import { useCoreStore } from "./stores/coreStore";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -102,6 +102,7 @@ const isAllDiagnosticsOk = computed(() => {
 async function runDiagnostics() {
   try {
     diagnostics.value = await daemonCall("run_diagnostics", {});
+    coreStore.setDiagnostics(diagnostics.value);
     diagnosticsError.value = null;
     if (!onboardingChecked && coreStore.hostCapabilities !== null) {
       onboardingChecked = true;
@@ -111,9 +112,16 @@ async function runDiagnostics() {
     }
   } catch (e: unknown) {
     diagnostics.value = null;
+    coreStore.setDiagnostics(null);
     diagnosticsError.value = String(e);
   }
 }
+
+watch(() => coreStore.openSetupModalSignal, (val) => {
+  if (val > 0) {
+    showSetupModal.value = true;
+  }
+});
 
 /** Installs missing tools via pkexec (Polkit asks for consent), then re-runs the diagnostics. */
 async function installTools(toolIds: string[]) {

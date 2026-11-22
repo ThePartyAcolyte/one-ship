@@ -18,7 +18,8 @@ import type {
   PendingApproval,
   SystemMetrics,
   ServiceMetrics,
-  HostCapabilities
+  HostCapabilities,
+  DiagnosticState
 } from "../types";
 
 export type SystemTelemetryData = SystemMetrics;
@@ -100,6 +101,8 @@ export const useCoreStore = defineStore('core', {
     selectedTerminalKeys: {} as Record<number, string[]>,
     terminalFilterModes: {} as Record<string, 'all' | 'errors_only'>,
     hostCapabilities: null as HostCapabilities | null,
+    diagnostics: null as DiagnosticState | null,
+    openSetupModalSignal: 0,
   }),
   getters: {
     activeProject(state): ProjectRecord | null {
@@ -118,6 +121,25 @@ export const useCoreStore = defineStore('core', {
     },
     installedRunners(state): string[] | null {
       return state.hostCapabilities ? state.hostCapabilities.installed_runners : null;
+    },
+    hasAnyRunner(state): boolean {
+      return (state.hostCapabilities?.installed_runners.length ?? 0) > 0;
+    },
+    hasGitInstalled(state): boolean {
+      return Boolean(state.diagnostics?.git_installed);
+    },
+    hasGitIdentity(state): boolean {
+      return Boolean(
+        state.diagnostics?.git_installed &&
+        state.diagnostics?.git_user_name?.trim() &&
+        state.diagnostics?.git_user_email?.trim()
+      );
+    },
+    hasGithubAuth(state): boolean {
+      return Boolean(state.diagnostics?.gh_installed && state.diagnostics?.gh_authenticated);
+    },
+    readinessLoaded(state): boolean {
+      return state.diagnostics !== null && state.hostCapabilities !== null;
     },
   },
   actions: {
@@ -286,6 +308,12 @@ export const useCoreStore = defineStore('core', {
       const caps = await daemonCall("get_host_capabilities", {});
       this.hostCapabilities = caps;
       return caps;
+    },
+    setDiagnostics(diag: DiagnosticState | null) {
+      this.diagnostics = diag;
+    },
+    requestOpenSetupModal() {
+      this.openSetupModalSignal += 1;
     },
     /** Reloads the state carried by daemon events after a `resync` (missed events cannot be replayed). */
     async resyncFromDaemon() {

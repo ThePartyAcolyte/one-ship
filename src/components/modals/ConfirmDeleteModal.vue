@@ -41,7 +41,7 @@ function handleConfirm() {
     class="fixed inset-0 ui-overlay-backdrop flex items-center justify-center z-50 p-4 font-mono select-none"
     @click.self="emit('close')"
   >
-    <div class="bg-[var(--bg-color)] border border-[var(--border-color)] p-6 max-w-lg w-full flex flex-col gap-4 shadow-2xl">
+    <div class="ui-surface-modal border border-[var(--border-color)] p-6 max-w-lg w-full flex flex-col gap-4 shadow-2xl">
       <!-- Header -->
       <div class="flex justify-between items-center border-b border-[var(--border-color)] pb-3">
         <div class="flex items-center gap-2">

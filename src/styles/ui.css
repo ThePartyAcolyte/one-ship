@@ -29,6 +29,10 @@
   background-color: var(--ui-bg-card);
 }
 
+.ui-surface-modal {
+  background-color: var(--ui-bg-base);
+}
+
 .ui-search-box {
   display: flex;
   align-items: center;

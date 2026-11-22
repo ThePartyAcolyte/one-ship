@@ -127,7 +127,7 @@ onUnmounted(() => {
       class="fixed inset-0 ui-overlay-backdrop flex items-center justify-center z-50 p-4 font-mono"
       @click.self="emit('close')"
     >
-      <div class="bg-[var(--bg-color)] border border-[var(--border-color)] w-full max-w-xl flex flex-col shadow-2xl text-[var(--fg-color)]">
+      <div class="ui-surface-modal border border-[var(--border-color)] w-full max-w-xl flex flex-col shadow-2xl text-[var(--fg-color)]">
         <!-- Header -->
         <div class="px-4 py-2.5 border-b border-[var(--border-color)] bg-[var(--ui-bg-card)]/60 flex items-center justify-between gap-2">
           <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--accent-color)] min-w-0">

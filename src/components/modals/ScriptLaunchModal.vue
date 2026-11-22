@@ -137,7 +137,7 @@ const computedCommandPreview = computed(() => {
 
 <template>
   <div v-if="show && script" class="fixed inset-0 ui-overlay-backdrop flex items-center justify-center z-50 p-4 font-mono">
-    <div class="bg-[var(--bg-color)] border border-[var(--border-color)] p-5 max-w-md w-full flex flex-col gap-4 shadow-2xl text-xs max-h-[90vh] overflow-y-auto">
+    <div class="ui-surface-modal border border-[var(--border-color)] p-5 max-w-md w-full flex flex-col gap-4 shadow-2xl text-xs max-h-[90vh] overflow-y-auto">
       <!-- Modal Header -->
       <div class="flex justify-between items-center border-b border-[var(--border-color)] pb-2">
         <h3 class="font-bold uppercase tracking-widest text-[var(--accent-color)] flex items-center gap-2">

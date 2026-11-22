@@ -280,6 +280,7 @@ import type { DeleteProjectStageArgs } from './generated/DeleteProjectStageArgs'
 import type { ListProjectStagesArgs } from './generated/ListProjectStagesArgs';
 import type { ProjectTaskStageRecord } from './generated/ProjectTaskStageRecord';
 import type { ReorderProjectStagesArgs } from './generated/ReorderProjectStagesArgs';
+import type { RunSetupTerminalActionArgs } from './generated/RunSetupTerminalActionArgs';
 import type { UpdateProjectStageArgs } from './generated/UpdateProjectStageArgs';
 import type { WorkingTreeFile } from './generated/WorkingTreeFile';
 import type { WriteClientLogArgs } from './generated/WriteClientLogArgs';
@@ -288,6 +289,7 @@ export interface DaemonCommands {
   run_diagnostics: { args: NoArgs; result: DiagnosticState };
   get_host_capabilities: { args: NoArgs; result: HostCapabilities };
   install_missing_tools: { args: InstallMissingToolsArgs; result: null };
+  run_setup_terminal_action: { args: RunSetupTerminalActionArgs; result: string };
   set_git_global_identity: { args: SetGitGlobalIdentityArgs; result: null };
   ensure_projects_root_dir: { args: EnsureProjectsRootDirArgs; result: string };
   search_github_repos: { args: NoArgs; result: GithubRepo[] };

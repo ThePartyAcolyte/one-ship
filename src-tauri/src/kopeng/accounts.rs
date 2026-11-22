@@ -370,25 +370,20 @@ pub fn get_active_agy_sessions() -> Vec<AgySession> {
 
 /// Reads the raw credentials JSON blob currently stored in the system keyring.
 ///
-/// `Ok(None)` means nothing is stored (no `agy` login yet), a normal state. A `secret-tool` that
-/// cannot run, or a stored blob that is not JSON, is an error.
+/// `Ok(None)` means nothing is stored (no `agy` login yet), a normal state. An unreachable
+/// Secret Service, or a stored blob that is not JSON, is an error.
 pub fn read_keyring_token() -> Result<Option<Value>, AccountsError> {
-    let output = Command::new("secret-tool")
-        .args(["lookup", "service", "gemini", "username", "antigravity"])
-        .output()
-        .map_err(|e| AccountsError::Keyring { operation: "lookup", details: format!("cannot run secret-tool: {}", e) })?;
+    let raw = crate::secret_store::run_sync(async {
+        crate::secret_store::lookup_pair("gemini", "antigravity").await
+    })
+    .map_err(|e| AccountsError::Keyring {
+        operation: "lookup",
+        details: e.to_string(),
+    })?;
 
-    // secret-tool exits 1 with empty output when no matching item exists.
-    let stdout_str = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if stdout_str.is_empty() {
-        if output.status.success() || output.stderr.is_empty() {
-            return Ok(None);
-        }
-        return Err(AccountsError::Keyring {
-            operation: "lookup",
-            details: String::from_utf8_lossy(&output.stderr).trim().to_string(),
-        });
-    }
+    let Some(stdout_str) = raw else {
+        return Ok(None);
+    };
 
     serde_json::from_str(&stdout_str)
         .map(Some)
@@ -397,56 +392,31 @@ pub fn read_keyring_token() -> Result<Option<Value>, AccountsError> {
 
 /// Stores an updated credentials JSON blob into the system keyring.
 pub fn write_keyring_token(payload: &Value) -> Result<(), AccountsError> {
-    let store_failed = |details: String| AccountsError::Keyring { operation: "store", details };
-    let mut child = Command::new("secret-tool")
-        .args([
-            "store",
-            "--label",
-            "Password for 'antigravity' on 'gemini'",
-            "service",
-            "gemini",
-            "username",
-            "antigravity",
-        ])
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|e| store_failed(format!("cannot run secret-tool: {}", e)))?;
-
     let payload_str = payload.to_string();
-    if let Some(mut stdin) = child.stdin.take() {
-        stdin
-            .write_all(payload_str.as_bytes())
-            .map_err(|e| store_failed(format!("cannot pipe payload: {}", e)))?;
-    }
-
-    let output = child
-        .wait_with_output()
-        .map_err(|e| store_failed(format!("wait failed: {}", e)))?;
-
-    if !output.status.success() {
-        return Err(store_failed(String::from_utf8_lossy(&output.stderr).trim().to_string()));
-    }
-
-    Ok(())
+    crate::secret_store::run_sync(async move {
+        crate::secret_store::store_pair(
+            "Password for 'antigravity' on 'gemini'",
+            "gemini",
+            "antigravity",
+            &payload_str,
+        )
+        .await
+    })
+    .map_err(|e| AccountsError::Keyring {
+        operation: "store",
+        details: e.to_string(),
+    })
 }
 
 /// Clears the Antigravity entry from the system keyring.
 pub fn clear_keyring_token() -> Result<(), AccountsError> {
-    let output = Command::new("secret-tool")
-        .args(["clear", "service", "gemini", "username", "antigravity"])
-        .output()
-        .map_err(|e| AccountsError::Keyring { operation: "clear", details: format!("cannot run secret-tool: {}", e) })?;
-
-    if !output.status.success() {
-        return Err(AccountsError::Keyring {
-            operation: "clear",
-            details: String::from_utf8_lossy(&output.stderr).trim().to_string(),
-        });
-    }
-
-    Ok(())
+    crate::secret_store::run_sync(async {
+        crate::secret_store::clear_pair("gemini", "antigravity").await
+    })
+    .map_err(|e| AccountsError::Keyring {
+        operation: "clear",
+        details: e.to_string(),
+    })
 }
 
 /// Ensures that the active account registered in SQLite is synchronized to the OS keyring.

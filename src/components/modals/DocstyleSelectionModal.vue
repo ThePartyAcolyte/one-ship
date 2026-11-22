@@ -103,7 +103,7 @@ function handleStartResolution() {
 
 <template>
   <div v-if="show && flag" class="fixed inset-0 ui-overlay-backdrop flex items-center justify-center z-50 p-4">
-    <div class="bg-[var(--bg-color)] border border-[var(--border-color)] shadow-2xl max-w-4xl w-full flex flex-col max-h-[90vh] overflow-hidden font-mono text-xs">
+    <div class="ui-surface-modal border border-[var(--border-color)] shadow-2xl max-w-4xl w-full flex flex-col max-h-[90vh] overflow-hidden font-mono text-xs">
       
       <!-- Header -->
       <div class="flex justify-between items-center border-b border-[var(--border-color)] px-5 py-3 shrink-0">

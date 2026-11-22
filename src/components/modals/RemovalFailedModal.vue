@@ -24,7 +24,7 @@ const emit = defineEmits<{
     class="fixed inset-0 ui-overlay-backdrop flex items-center justify-center z-50 p-4 font-mono"
     @click.self="emit('cancel')"
   >
-    <div class="bg-[var(--bg-color)] border border-[var(--border-color)] p-6 max-w-lg w-full flex flex-col gap-4 shadow-2xl">
+    <div class="ui-surface-modal border border-[var(--border-color)] p-6 max-w-lg w-full flex flex-col gap-4 shadow-2xl">
       <div class="flex justify-between items-center border-b border-[var(--border-color)] pb-3">
         <h3 class="text-xs font-bold uppercase tracking-widest text-[var(--fg-color)]">
           Removal failed: {{ failure.project.name }}

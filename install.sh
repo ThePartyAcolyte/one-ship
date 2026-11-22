@@ -2,7 +2,58 @@
 # ONE-SHIP Interactive Linux Installer & Feature Wizard (Spec 41 Phase 5)
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ONESHIP_REPO_URL="${ONESHIP_REPO_URL:-https://github.com/ThePartyAcolyte/one-ship.git}"
+ONESHIP_REPO_BRANCH="${ONESHIP_REPO_BRANCH:-}"
+
+bootstrap_remote_install() {
+  local tmp_dir=""
+  tmp_dir="$(mktemp -d -t one-ship-install.XXXXXX)"
+  trap 'rm -rf "$tmp_dir"' EXIT INT TERM
+
+  if ! command -v git >/dev/null 2>&1; then
+    printf '[info]  Installing git for bootstrap clone...\n'
+    if command -v apt-get >/dev/null 2>&1; then
+      sudo apt-get update && sudo apt-get install -y git
+    elif command -v dnf >/dev/null 2>&1; then
+      sudo dnf install -y git
+    elif command -v pacman >/dev/null 2>&1; then
+      sudo pacman -S --needed --noconfirm git
+    elif command -v zypper >/dev/null 2>&1; then
+      sudo zypper --non-interactive install git
+    else
+      printf '[error] git is required to bootstrap ONE-SHIP.\n' >&2
+      exit 1
+    fi
+  fi
+
+  printf '[info]  Cloning ONE-SHIP into temporary workspace...\n'
+  local -a clone_args=(git clone --depth 1)
+  if [[ -n "$ONESHIP_REPO_BRANCH" ]]; then
+    clone_args+=(--branch "$ONESHIP_REPO_BRANCH")
+  fi
+  clone_args+=("$ONESHIP_REPO_URL" "$tmp_dir/one-ship")
+  "${clone_args[@]}"
+
+  export ONESHIP_REPOS_DIR="${ONESHIP_REPOS_DIR:-$HOME/Projects}"
+  if [[ ! -t 0 && -r /dev/tty ]]; then
+    "$tmp_dir/one-ship/install.sh" "$@" < /dev/tty
+  else
+    "$tmp_dir/one-ship/install.sh" "$@"
+  fi
+  exit $?
+}
+
+SCRIPT_SOURCE="${BASH_SOURCE[0]:-}"
+if [[ -n "$SCRIPT_SOURCE" ]]; then
+  SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_SOURCE")" && pwd)"
+else
+  SCRIPT_DIR=""
+fi
+
+if [[ -z "$SCRIPT_DIR" || ! -f "$SCRIPT_DIR/src-tauri/Cargo.toml" ]]; then
+  bootstrap_remote_install "$@"
+fi
+
 DEFAULT_REPOS_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 PREFIX="${ONESHIP_PREFIX:-$HOME/.local}"
@@ -10,9 +61,11 @@ REPOS_DIR="${ONESHIP_REPOS_DIR:-$DEFAULT_REPOS_DIR}"
 PROFILE=""
 FEATURES_CSV=""
 SKIP_DEPS=0
+ONLY_FEATURES=0
 ASSUME_YES=0
 DRY_RUN=0
 UNINSTALL=0
+SUDO_KEEPALIVE_PID=""
 
 # Feature flags (0/1)
 FEAT_CORE=1
@@ -108,6 +161,8 @@ Options:
       (default: parent directory of this checkout)
   --skip-deps
       Do not install distribution packages via pacman/apt-get/dnf/zypper
+  --only-features
+      Install only the selected optional features without rebuilding/reinstalling core binaries
   --yes
       Non-interactive mode: accept default confirmations automatically
   --dry-run
@@ -144,6 +199,10 @@ parse_args() {
         ;;
       --skip-deps)
         SKIP_DEPS=1
+        shift
+        ;;
+      --only-features)
+        ONLY_FEATURES=1
         shift
         ;;
       --yes|-y)
@@ -199,11 +258,34 @@ detect_environment() {
     IS_HYPRLAND=1
   fi
 
-  if command -v pkexec >/dev/null 2>&1; then
-    ELEVATE_CMD="pkexec"
-  elif command -v sudo >/dev/null 2>&1; then
+  # Prefer sudo in interactive/SSH terminals so credentials are cached across steps.
+  if command -v sudo >/dev/null 2>&1; then
     ELEVATE_CMD="sudo"
+  elif command -v pkexec >/dev/null 2>&1; then
+    ELEVATE_CMD="pkexec"
   fi
+}
+
+cleanup_sudo_keepalive() {
+  if [[ -n "$SUDO_KEEPALIVE_PID" ]]; then
+    kill "$SUDO_KEEPALIVE_PID" >/dev/null 2>&1 || true
+    SUDO_KEEPALIVE_PID=""
+  fi
+}
+
+prime_sudo_session() {
+  (( DRY_RUN || EUID == 0 || SKIP_DEPS )) && return 0
+  [[ "$ELEVATE_CMD" == "sudo" ]] || return 0
+  log_info "Authenticating sudo once for system dependencies and udev setup..."
+  sudo -v
+  (
+    while kill -0 "$$" 2>/dev/null; do
+      sleep 50
+      sudo -n true 2>/dev/null || exit 0
+    done
+  ) &
+  SUDO_KEEPALIVE_PID="$!"
+  trap cleanup_sudo_keepalive EXIT INT TERM
 }
 
 apply_profile_or_features() {
@@ -414,7 +496,7 @@ install_base_toolchain_deps() {
       install_system_packages "${apt_pkgs[@]}"
       ;;
     dnf)
-      install_system_packages @development-tools pkgconf-pkg-config openssl-devel webkit2gtk4.1-devel libayatana-appindicator-gtk3-devel librsvg2-devel protobuf-compiler systemd-devel libusb1-devel git gh nodejs npm
+      install_system_packages @development-tools gcc gcc-c++ make pkgconf-pkg-config openssl-devel webkit2gtk4.1-devel libayatana-appindicator-gtk3-devel librsvg2-devel protobuf-compiler protobuf-devel systemd-devel libusb1-devel git gh nodejs nodejs-npm
       ;;
     zypper)
       install_system_packages -t pattern devel_basis
@@ -556,7 +638,7 @@ build_and_install_core() {
 
 detect_preferred_terminal() {
   local t=""
-  for t in ghostty kitty alacritty foot wezterm gnome-terminal konsole xfce4-terminal x-terminal-emulator xterm; do
+  for t in ghostty kitty alacritty foot wezterm ptyxis kgx gnome-terminal konsole xfce4-terminal x-terminal-emulator xterm; do
     if command -v "$t" >/dev/null 2>&1; then
       printf '%s' "$t"
       return 0
@@ -832,23 +914,31 @@ install_feature_cad_solidcraft() {
       curl -fsSL "$SOLIDCRAFT_RELEASES_API" 2>/dev/null | python3 -c '
 import json, sys
 arch = sys.argv[1].lower()
+pm = sys.argv[2].lower()
+if pm == "dnf":
+    exts = (".rpm", ".tar.gz", ".tar.xz", ".appimage")
+elif pm == "apt-get":
+    exts = (".deb", ".tar.gz", ".tar.xz", ".appimage")
+else:
+    exts = (".tar.gz", ".tar.xz", ".rpm", ".deb", ".appimage")
 data = json.load(sys.stdin)
 assets = data.get("assets", [])
-for a in assets:
-    name = a.get("name", "").lower()
-    if "linux" in name and (arch in name or (arch == "x86_64" and "amd64" in name)) and (name.endswith(".tar.gz") or name.endswith(".tar.xz") or name.endswith(".deb") or name.endswith(".rpm") or name.endswith(".appimage")):
-        print(a.get("browser_download_url", ""))
-        break
-' "$arch" || true
+for ext in exts:
+    for a in assets:
+        name = a.get("name", "").lower()
+        if "linux" in name and (arch in name or (arch == "x86_64" and "amd64" in name)) and name.endswith(ext):
+            print(a.get("browser_download_url", ""))
+            sys.exit(0)
+' "$arch" "$PKG_MANAGER" || true
     )"
     if [[ -n "$asset_url" ]]; then
       log_info "Found SolidCraft prebuilt release asset: $asset_url"
-      log_info "Download and extract 'solidcraft' + 'solidcraft-cli' into '$PREFIX/bin', or install via your distro package format."
+      log_info "Download from https://solidcraft.io/download/ (or install the package above) so 'solidcraft' + 'solidcraft-cli' are on PATH."
       return 0
     fi
   fi
 
-  log_warn "SolidCraft is not cloned/compiled from source. Download prebuilt binaries from: $SOLIDCRAFT_RELEASES_URL"
+  log_warn "SolidCraft is not cloned/compiled from source. Download prebuilt binaries from: https://solidcraft.io/download/"
 }
 
 install_feature_omarchy() {
@@ -899,6 +989,18 @@ uninstall_oneship() {
   log_ok "Uninstall complete (user data/config in ~/.config/one-ship/ preserved)."
 }
 
+print_banner() {
+  cat <<'EOF'
+   ____  _   _ ______     _____ _    _ _____ _____
+  / __ \| \ | |  ____|   / ____| |  | |_   _|  __ \
+ | |  | |  \| | |__ ____| (___ | |__| | | | | |__) |
+ | |  | | . ` |  __|_____\___ \|  __  | | | |  ___/
+ | |__| | |\  | |____    ____) | |  | |_| |_| |
+  \____/|_| \_|______|  |_____/|_|  |_|_____|_|
+      Linux Workstation & Agentic Control Center
+EOF
+}
+
 print_summary() {
   echo ""
   echo "=== ONE-SHIP Installation Plan Summary ==="
@@ -907,7 +1009,8 @@ print_summary() {
   echo "  Session / WM    : $SESSION_TYPE (Hyprland=$IS_HYPRLAND, Omarchy=$IS_OMARCHY)"
   echo "  Install Prefix  : $PREFIX"
   echo "  Repos Directory : $REPOS_DIR"
-  echo "  Features        : core=1 rea=$FEAT_REA electronics=$FEAT_ELECTRONICS design=$FEAT_DESIGN pcb=$FEAT_PCB cad=$FEAT_CAD omarchy=$FEAT_OMARCHY"
+  echo "  Core Build      : $( (( ONLY_FEATURES )) && echo 'skipped (--only-features)' || echo 'enabled' )"
+  echo "  Features        : rea=$FEAT_REA electronics=$FEAT_ELECTRONICS design=$FEAT_DESIGN pcb=$FEAT_PCB cad=$FEAT_CAD omarchy=$FEAT_OMARCHY"
   echo ""
 }
 
@@ -920,6 +1023,7 @@ main() {
     exit 0
   fi
 
+  print_banner
   apply_profile_or_features
   interactive_wizard
   print_summary
@@ -929,8 +1033,16 @@ main() {
     exit 0
   fi
 
-  build_and_install_core
-  seed_initial_config
+  if (( ! ONLY_FEATURES )) || (( FEAT_REA )) || (( FEAT_ELECTRONICS )); then
+    prime_sudo_session
+  fi
+
+  if (( ! ONLY_FEATURES )); then
+    build_and_install_core
+    seed_initial_config
+  else
+    log_info "Skipping core build (--only-features)."
+  fi
 
   (( FEAT_REA ))         && install_feature_rea
   (( FEAT_ELECTRONICS )) && install_feature_electronics
@@ -943,6 +1055,7 @@ main() {
     echo ""
     log_warn "No AI agent runner detected on PATH (agy, claude, opencode)."
     log_info "Install at least one CLI runner before launching autonomous agents:"
+    log_info "  - agy      : curl -fsSL https://antigravity.google/cli/install.sh | bash"
     log_info "  - claude   : npm install -g @anthropic-ai/claude-code"
     log_info "  - opencode : curl -fsSL https://opencode.ai/install | bash"
   fi

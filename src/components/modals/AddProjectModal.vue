@@ -66,6 +66,13 @@ const {
 } = pairPicker;
 
 const hasInstalledRunner = computed(() => (coreStore.installedRunners?.length ?? 0) > 0);
+const missingRunnerGate = computed(() => coreStore.hostCapabilities !== null && !coreStore.hasAnyRunner);
+const missingGitIdentityGate = computed(() => coreStore.diagnostics !== null && !coreStore.hasGitIdentity);
+
+function openSetupAndClose() {
+  coreStore.requestOpenSetupModal();
+  emit('close');
+}
 
 // Computed target full path
 const computedTargetPath = computed(() => {
@@ -340,7 +347,7 @@ onUnmounted(() => {
     class="fixed inset-0 ui-overlay-backdrop z-50 flex items-center justify-center p-4 font-mono select-none"
   >
     <div 
-      class="w-full max-w-xl bg-[var(--bg-color)] border border-[var(--border-color)] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
+      class="w-full max-w-xl ui-surface-modal border border-[var(--border-color)] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
     >
       <!-- Modal Header -->
       <div class="flex items-center justify-between px-4 py-3 border-b border-[var(--border-color)] bg-[var(--ui-bg-card)]">
@@ -408,6 +415,24 @@ onUnmounted(() => {
           </button>
         </div>
 
+        <!-- Missing Runner Gate Banner -->
+        <div
+          v-if="missingRunnerGate"
+          class="p-2.5 bg-[var(--status-warn-bg)] border border-[var(--status-warn-border)] text-[var(--status-warn-color)] text-[11px] flex items-center justify-between gap-2"
+        >
+          <div class="flex items-center gap-2 min-w-0">
+            <AlertTriangle :size="14" class="shrink-0" />
+            <span>Install at least one AI CLI runner (<code>agy</code>, <code>claude</code>, or <code>opencode</code>) before adding or initializing projects.</span>
+          </div>
+          <button
+            type="button"
+            @click="openSetupAndClose"
+            class="px-2 py-1 border border-[var(--status-warn-border)] bg-[var(--bg-color)] text-[var(--status-warn-color)] hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] text-[10px] font-bold uppercase shrink-0 cursor-pointer"
+          >
+            Setup &amp; Readiness
+          </button>
+        </div>
+
         <!-- MODE: NEW PROJECT (GREENFIELD) -->
         <div v-if="activeMode === 'new'" class="flex flex-col gap-4">
           <div class="text-[11px] text-[var(--dim-color)] leading-relaxed">
@@ -461,10 +486,14 @@ onUnmounted(() => {
               <GitBranch :size="14" class="text-[var(--accent-color)]" />
               <div class="flex flex-col">
                 <span class="font-bold text-[var(--fg-color)] text-[11px]">Initialize Git Repository</span>
-                <span class="text-[10px] text-[var(--dim-color)]">Run `git init` in the project root</span>
+                <span class="text-[10px] text-[var(--dim-color)]">
+                  {{ missingGitIdentityGate
+                    ? 'Unavailable: configure Git user.name and user.email in Setup & Readiness'
+                    : 'Run `git init` in the project root' }}
+                </span>
               </div>
             </div>
-            <AppToggle v-model="initGit" />
+            <AppToggle v-model="initGit" :disabled="missingGitIdentityGate" />
           </div>
 
           <!-- Reverse Engineering Lab (REA) Toggle -->
@@ -705,7 +734,7 @@ onUnmounted(() => {
           v-if="activeMode === 'new'"
           type="button"
           @click="handleCreateGreenfield"
-          :disabled="isSubmitting || !projectName.trim() || !parentPath.trim()"
+          :disabled="isSubmitting || missingRunnerGate || !projectName.trim() || !parentPath.trim()"
           class="px-4 py-1.5 text-xs font-bold bg-[var(--accent-color)] text-[var(--bg-color)] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1.5 cursor-pointer"
         >
           <Loader2 v-if="isSubmitting" :size="14" class="animate-spin" />
@@ -717,7 +746,7 @@ onUnmounted(() => {
           v-if="activeMode === 'existing'"
           type="button"
           @click="handleAddExisting"
-          :disabled="isSubmitting || !existingPath.trim()"
+          :disabled="isSubmitting || missingRunnerGate || !existingPath.trim()"
           class="px-4 py-1.5 text-xs font-bold bg-[var(--accent-color)] text-[var(--bg-color)] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1.5 cursor-pointer"
         >
           <Loader2 v-if="isSubmitting" :size="14" class="animate-spin" />
@@ -729,7 +758,7 @@ onUnmounted(() => {
           v-if="activeMode === 'clone'"
           type="button"
           @click="handleCloneAndAdd"
-          :disabled="isSubmitting || !cloneRepoUrl.trim() || !cloneProjectName.trim() || !cloneParentPath.trim()"
+          :disabled="isSubmitting || missingRunnerGate || missingGitIdentityGate || !cloneRepoUrl.trim() || !cloneProjectName.trim() || !cloneParentPath.trim()"
           class="px-4 py-1.5 text-xs font-bold bg-[var(--accent-color)] text-[var(--bg-color)] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1.5 cursor-pointer"
         >
           <Loader2 v-if="isSubmitting" :size="14" class="animate-spin" />

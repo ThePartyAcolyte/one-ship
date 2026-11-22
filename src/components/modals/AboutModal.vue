@@ -36,7 +36,7 @@ onUnmounted(() => {
     class="fixed inset-0 ui-overlay-backdrop flex items-center justify-center z-50 p-4 font-mono select-none"
     @click.self="emit('close')"
   >
-    <div class="ui-surface-base border border-[var(--border-color)] max-w-md w-full flex flex-col shadow-2xl overflow-hidden">
+    <div class="ui-surface-modal border border-[var(--border-color)] max-w-md w-full flex flex-col shadow-2xl overflow-hidden">
       <!-- Header -->
       <div class="flex items-center justify-between px-4 py-3 border-b border-[var(--border-color)] ui-surface-title">
         <div class="flex items-center gap-2.5">

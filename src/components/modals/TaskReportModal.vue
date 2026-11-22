@@ -76,7 +76,7 @@ watch(() => props.project, () => {
     class="fixed inset-0 ui-overlay-backdrop flex items-center justify-center z-50 p-4 font-mono"
     @click.self="emit('close')"
   >
-    <div class="bg-[var(--bg-color)] border border-[var(--border-color)] w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl text-[var(--fg-color)]">
+    <div class="ui-surface-modal border border-[var(--border-color)] w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl text-[var(--fg-color)]">
       <!-- Modal Header -->
       <div class="border-b border-[var(--border-color)] px-4 py-2.5 flex items-center justify-between bg-black/40">
         <div class="flex items-center gap-2 text-xs">
