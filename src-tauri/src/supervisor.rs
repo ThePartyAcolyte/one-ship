@@ -2469,17 +2469,7 @@ impl ProcessSupervisor {
             if is_agy {
                 let guard = crate::kopeng::accounts::keyring_lock().lock().await;
                 if let (Some(ref refresh_token), Some(ref email)) = (&agy_target_token, &agy_acc_email) {
-                    let payload = serde_json::json!({
-                        "token": {
-                            "access_token": "",
-                            "token_type": "Bearer",
-                            "refresh_token": refresh_token,
-                            "expiry": "2000-01-01T00:00:00Z"
-                        },
-                        "auth_method": "consumer",
-                        "id_token": "",
-                        "_account_email": email
-                    });
+                    let payload = crate::kopeng::accounts::build_keyring_payload(refresh_token, email);
                     crate::logger::log_failure("supervisor", "write_keyring_token", crate::kopeng::accounts::write_keyring_token(&payload));
                 } else {
                     crate::logger::log_failure("supervisor", "ensure_active_account_in_keyring", crate::kopeng::accounts::ensure_active_account_in_keyring());

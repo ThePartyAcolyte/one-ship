@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, shallowRef, watch, computed, onMounted, onUnmounted } from 'vue';
-import { Search, X, Check, AlertCircle, RefreshCw, ArrowRight, Plus, Loader2 } from '@lucide/vue';
+import { Search, X, Check, AlertCircle, RefreshCw, ArrowRight, Plus, Loader2, HelpCircle, SlidersHorizontal } from '@lucide/vue';
 import { AppTooltip, AppSelect, AppInput, AppToggle } from '../ui';
 import type { SelectOption } from '../ui';
 import { useRunnerCatalog } from '../../utils/runnerCatalog';
@@ -37,6 +37,7 @@ const RUNNER_FIELD_TYPES = ['runner', 'runner_model', 'runner_effort'];
 
 const pluginSchemas = shallowRef<PluginConfigSchema[]>([]);
 const searchQuery = ref<string>('');
+const showAdvanced = ref<boolean>(false);
 const activeSettingsTab = ref<string>('');
 const settingsValues = ref<Record<string, Record<string, ConfigPrimitive>>>({});
 const settingsProvenance = ref<Record<string, string>>({});
@@ -70,10 +71,13 @@ const filteredPluginSchemas = computed(() => {
       const scopedFields = plugin.fields.filter((f) => f.scope !== 'global_only');
 
       if (!query) {
+        const visibleFields = showAdvanced.value
+          ? scopedFields
+          : scopedFields.filter((f) => !f.advanced);
         return {
           ...plugin,
-          matchingFields: scopedFields,
-          matchCount: scopedFields.length,
+          matchingFields: visibleFields,
+          matchCount: visibleFields.length,
         };
       }
 
@@ -698,6 +702,19 @@ onUnmounted(() => {
         <span v-if="searchQuery" class="text-[9px] text-[var(--accent-color)] font-mono uppercase">
           {{ totalMatchCount }} found
         </span>
+        <AppTooltip text="Show advanced internal tuning and timeout parameters" position="bottom">
+          <button
+            type="button"
+            @click="showAdvanced = !showAdvanced"
+            class="h-6 px-2 text-[9px] font-mono font-bold uppercase tracking-wider border transition-colors cursor-pointer flex items-center gap-1.5"
+            :class="showAdvanced
+              ? 'border-[var(--accent-color)] text-[var(--accent-color)] bg-[var(--accent-color)]/10'
+              : 'border-[var(--border-color)] text-[var(--dim-color)] hover:text-[var(--fg-color)]'"
+          >
+            <SlidersHorizontal :size="11" />
+            <span>Advanced</span>
+          </button>
+        </AppTooltip>
         <button
           @click="discardChanges"
           :disabled="(!isDirty && !externalConfigChanged) || isSaving || isLoading"
@@ -730,7 +747,7 @@ onUnmounted(() => {
       <span>
         Project enables integration(s) missing on this host:
         <strong>{{ missingProjectIntegrations.map((i) => i.label).join(', ') }}</strong>.
-        Tabs stay hidden until binaries are installed or paths are configured in Global Settings → Integrations.
+        Tabs stay hidden until binaries are installed or paths are configured in Settings → Integrations.
       </span>
     </div>
     <div v-if="successMessage" class="px-3 py-2 border-b border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] text-[var(--status-ok-color)] text-[10px] flex items-center gap-2">
@@ -910,32 +927,36 @@ onUnmounted(() => {
                 :class="hasCategoryToggle(plugin.plugin_id) && !isCategoryEnabled(plugin.plugin_id) ? 'opacity-45 pointer-events-none select-none' : ''"
               >
               <!-- Label, Provenance Badge and Scope -->
-              <div class="flex justify-between items-center gap-2">
-                <div class="flex items-center gap-2">
-                  <span class="font-bold text-[var(--fg-color)] text-[11px]">{{ field.label }}</span>
-                  <span
-                    class="text-[9px] px-1.5 py-0.2 border uppercase font-mono"
-                    :class="settingsProvenance[`${plugin.plugin_id}.${field.key}`] === 'project'
-                      ? 'border-[var(--accent-color)] text-[var(--accent-color)] bg-[var(--accent-color)]/10'
-                      : (settingsProvenance[`${plugin.plugin_id}.${field.key}`] === 'global' ? 'border-[var(--status-info-border)] text-[var(--status-info-color)]' : 'border-[var(--border-color)] text-[var(--dim-color)]')"
-                  >
-                    [{{ settingsProvenance[`${plugin.plugin_id}.${field.key}`] === 'project' ? 'rula.toml' : (settingsProvenance[`${plugin.plugin_id}.${field.key}`] || 'default') }}]
-                  </span>
-                </div>
-                <div class="flex items-center gap-2 text-[9px]">
-                  <span class="px-1.5 py-0.5 border border-[var(--border-color)] text-[var(--dim-color)] uppercase">
-                    {{ field.scope }}
-                  </span>
-                  <span class="text-[var(--dim-color)] font-mono">
+              <div class="flex justify-between items-start gap-2">
+                <div class="flex flex-col gap-0.5 min-w-0">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="font-bold text-[var(--fg-color)] text-[11px]">{{ field.label }}</span>
+                    <AppTooltip :text="field.description" position="top">
+                      <HelpCircle :size="12" class="text-[var(--dim-color)] hover:text-[var(--accent-color)] cursor-help shrink-0" />
+                    </AppTooltip>
+                    <span
+                      v-if="field.advanced"
+                      class="text-[8px] px-1 py-0.2 border border-[var(--border-color)] text-[var(--dim-color)] uppercase font-mono"
+                    >
+                      ADV
+                    </span>
+                    <span
+                      class="text-[9px] px-1.5 py-0.2 border uppercase font-mono"
+                      :class="settingsProvenance[`${plugin.plugin_id}.${field.key}`] === 'project'
+                        ? 'border-[var(--accent-color)] text-[var(--accent-color)] bg-[var(--accent-color)]/10'
+                        : (settingsProvenance[`${plugin.plugin_id}.${field.key}`] === 'global' ? 'border-[var(--status-info-border)] text-[var(--status-info-color)]' : 'border-[var(--border-color)] text-[var(--dim-color)]')"
+                    >
+                      [{{ settingsProvenance[`${plugin.plugin_id}.${field.key}`] === 'project' ? 'rula.toml' : (settingsProvenance[`${plugin.plugin_id}.${field.key}`] || 'default') }}]
+                    </span>
+                  </div>
+                  <span class="text-[9px] text-[var(--dim-color)]/70 font-mono truncate">
                     {{ field.key }}
                   </span>
                 </div>
+                <span class="px-1.5 py-0.5 border border-[var(--border-color)] text-[var(--dim-color)] uppercase text-[9px] shrink-0">
+                  {{ field.scope }}
+                </span>
               </div>
-
-              <!-- Description -->
-              <p class="text-[10px] text-[var(--dim-color)] leading-relaxed">
-                {{ field.description }}
-              </p>
 
               <!-- Dynamic Input Controls -->
               <div class="mt-1">

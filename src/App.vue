@@ -26,6 +26,7 @@ import SetupChecklistModal from './components/modals/SetupChecklistModal.vue';
 import { ONBOARDING_DISMISSED_KEY } from './utils/integrationGuides';
 import RollingStatusLog from './components/floating/RollingStatusLog.vue';
 import ProjectWorkspace from './components/workspace/ProjectWorkspace.vue';
+import WelcomeView from './components/workspace/WelcomeView.vue';
 import FloatingChatOverlay from './components/dialogue/FloatingChatOverlay.vue';
 import { useDialogueStore } from './stores/dialogueStore';
 import { useWorkspaceLayoutStore, type WorkspaceTab } from './stores/workspaceLayoutStore';
@@ -106,7 +107,7 @@ async function runDiagnostics() {
     diagnosticsError.value = null;
     if (!onboardingChecked && coreStore.hostCapabilities !== null) {
       onboardingChecked = true;
-      if (!isAllDiagnosticsOk.value && localStorage.getItem(ONBOARDING_DISMISSED_KEY) !== '1') {
+      if (!coreStore.shouldShowWelcomeView && !isAllDiagnosticsOk.value && localStorage.getItem(ONBOARDING_DISMISSED_KEY) !== '1') {
         showSetupModal.value = true;
       }
     }
@@ -206,12 +207,18 @@ function addProject() {
   showAddProjectModal.value = true;
 }
 
+function openProjectFromWelcome(project: ProjectRecord) {
+  coreStore.setActiveProject(project.id);
+  coreStore.setWelcomeViewRequested(false);
+}
+
 async function handleProjectAdded(project: ProjectRecord, shouldInit?: boolean) {
   try {
     coreStore.setProjects(await daemonCall("get_projects", {}));
     if (project?.id) {
       coreStore.setActiveProject(project.id);
     }
+    coreStore.setWelcomeViewRequested(false);
     await updateAgentStates();
     addStatusLog(`Added project: ${project?.path || project?.name || 'Unknown'}`);
     if (shouldInit && project) {
@@ -228,6 +235,7 @@ async function handleGreenfieldCreated(project: ProjectRecord) {
     if (project?.id) {
       coreStore.setActiveProject(project.id);
     }
+    coreStore.setWelcomeViewRequested(false);
     await updateAgentStates();
     addStatusLog(`Created greenfield project: ${project?.name} (${project?.path})`);
     
@@ -264,6 +272,7 @@ async function updateAllAgentStates() {
 
 async function refreshProjects() {
   coreStore.setProjects(await daemonCall("get_projects", {}));
+  await coreStore.syncWelcomePreference({ applyInitialOpen: true }).catch(reportAsyncFailure);
   await updateAllAgentStates();
 }
 
@@ -459,6 +468,7 @@ function onSettingsSaved(scope: 'global' | 'project', name?: string) {
     addStatusLog(`Saved project settings for ${name} (rula.toml)`);
   } else {
     addStatusLog("Saved global settings (~/.config/one-ship/config.toml)");
+    coreStore.syncWelcomePreference().catch(reportAsyncFailure);
   }
 }
 
@@ -634,6 +644,7 @@ onMounted(async () => {
   accountStore.fetchAccounts().catch(reportAsyncFailure);
   metricsStore.fetchAccountQuotas().catch(reportAsyncFailure);
   coreStore.setProjects(await daemonCall("get_projects", {}));
+  await coreStore.syncWelcomePreference({ applyInitialOpen: true }).catch(reportAsyncFailure);
   await updateAllAgentStates();
   await layoutStore.initUiState();
   runDiagnostics();
@@ -739,6 +750,7 @@ onMounted(async () => {
       @open-setup="showSetupModal = true"
       @open-logs="openSystemLogs"
       @open-about="showAboutModal = true"
+      @open-welcome="coreStore.setWelcomeViewRequested(true)"
       @open-omnisearch="openOmnisearch"
     />
 
@@ -746,7 +758,20 @@ onMounted(async () => {
     <div class="flex-1 flex overflow-hidden min-h-0 relative">
       <!-- Main Workspace Stage Area -->
       <div class="flex-1 flex min-w-0 min-h-0 h-full overflow-hidden relative">
+        <WelcomeView
+          v-if="coreStore.shouldShowWelcomeView"
+          :projects="projects"
+          :agent-states="agentStates"
+          :diagnostics="diagnostics"
+          @add-project="addProject"
+          @open-project="openProjectFromWelcome"
+          @continue-to-workspace="coreStore.setWelcomeViewRequested(false)"
+          @open-setup="showSetupModal = true"
+          @open-settings="() => openSettingsModal('global')"
+          @open-logs="openSystemLogs"
+        />
         <ProjectWorkspace 
+          v-else
           :projects="projects"
           :active-project-menu-id="activeProjectMenuId"
           :agent-states="agentStates"

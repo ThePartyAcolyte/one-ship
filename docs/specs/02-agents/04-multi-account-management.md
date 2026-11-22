@@ -38,11 +38,10 @@ Active status is partitioned per provider (`UPDATE accounts SET is_active = 0 WH
          "expiry":        "<RFC3339 timestamp>"
        },
        "auth_method": "consumer",
-       "id_token": "<JWT with user identity claims>"
+       "id_token_email": "<user email>"
      }
      ```
    - `agy` refreshes `access_token` automatically without changing `refresh_token`. Therefore, **`refresh_token` change is the sole signal for a new login**.
-   - `extract_email_from_id_token` base64url-decodes the RS256 JWT middle segment (with `=` padding) to read the `email` claim without signature verification.
 2. **DeepSeek (`deepseek`):**
    - Authenticates via API keys (`sk-...`), encrypted in SQLite (`accounts`, `provider = 'deepseek'`).
    - On first discovery when no DeepSeek account exists in SQLite, an existing key in `~/.local/share/opencode/auth.json` is imported once; thereafter SQLite is the sole source of truth (no `DEEPSEEK_API_KEY` or `auth.json` fallback). Activating a DeepSeek account writes its key back to `auth.json` while preserving other providers (an unreadable `auth.json` fails explicitly rather than being overwritten).

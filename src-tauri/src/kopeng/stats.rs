@@ -1017,17 +1017,7 @@ pub async fn probe_account_quota(account_id: &str, target_pool: Option<&str>) ->
     let original_token = crate::kopeng::accounts::read_keyring_token()?;
     let refresh_token = crate::kopeng::accounts::decrypt_refresh_token(&acc.enc_token)?;
 
-    let payload = serde_json::json!({
-        "token": {
-            "access_token": "",
-            "token_type": "Bearer",
-            "refresh_token": refresh_token,
-            "expiry": "2000-01-01T00:00:00Z"
-        },
-        "auth_method": "consumer",
-        "id_token": "",
-        "_account_email": acc.email
-    });
+    let payload = crate::kopeng::accounts::build_keyring_payload(&refresh_token, &acc.email);
 
     let _guard = crate::kopeng::accounts::keyring_lock().lock().await;
 

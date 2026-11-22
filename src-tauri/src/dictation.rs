@@ -163,7 +163,7 @@ pub struct DictationResult {
 pub enum DictationError {
     #[error("Native dictation is disabled")]
     Disabled,
-    #[error("Configure the Google AI Studio API key in Settings > Global Voice Controller")]
+    #[error("Configure the Google AI Studio API key in Settings > Voice Controller")]
     MissingApiKey,
     #[error("OS keyring is unavailable: {0}")]
     KeyringUnavailable(String),

@@ -63,6 +63,7 @@ import type { DictationSessionInfo } from './generated/DictationSessionInfo';
 import type { DictationResult } from './generated/DictationResult';
 import type { DictationStatus } from './generated/DictationStatus';
 import type { SetDictationAutoSendArgs } from './generated/SetDictationAutoSendArgs';
+import type { SetShowWelcomeOnStartupArgs } from './generated/SetShowWelcomeOnStartupArgs';
 import type { GeminiApiKeyStatus } from './generated/GeminiApiKeyStatus';
 import type { SetGeminiApiKeyArgs } from './generated/SetGeminiApiKeyArgs';
 import type { GetProjectPcbcraftStatusArgs } from './generated/GetProjectPcbcraftStatusArgs';
@@ -437,6 +438,7 @@ export interface DaemonCommands {
   get_global_config: { args: NoArgs; result: JsonValue };
   get_scoped_project_config: { args: ProjectPathArgs; result: Record<string, ScopedConfigField> };
   save_global_config: { args: SaveGlobalConfigArgs; result: null };
+  set_show_welcome_on_startup: { args: SetShowWelcomeOnStartupArgs; result: null };
   save_project_rula_config: { args: SaveProjectRulaConfigArgs; result: null };
   list_agent_runners: { args: NoArgs; result: RunnerSchema[] };
 

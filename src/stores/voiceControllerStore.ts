@@ -223,8 +223,8 @@ export const useVoiceControllerStore = defineStore('voiceController', {
 
         if (!this.enabled || !this.configured) {
           const msg = !this.configured
-            ? 'Configure Google AI Studio API Key in Settings -> Global Voice Controller'
-            : 'Global Voice Controller is disabled';
+            ? 'Configure Google AI Studio API Key in Settings -> Voice Controller'
+            : 'Voice Controller is disabled';
           this.isPttHeld = false;
           this.lastError = msg;
           this.controllerState = 'error';
@@ -238,6 +238,9 @@ export const useVoiceControllerStore = defineStore('voiceController', {
           logVoiceClient('INFO', 'Recording started via pw-record (Alt+V to send, Alt+Backspace/Esc to cancel)');
         }
       } catch (err: unknown) {
+        if (!this.isPttHeld) {
+          return;
+        }
         this.isPttHeld = false;
         this.lastError = String(err);
         this.controllerState = 'error';

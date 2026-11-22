@@ -260,6 +260,7 @@ pub const API_COMMANDS: &[&str] = &[
     "get_global_config",
     "get_scoped_project_config",
     "save_global_config",
+    "set_show_welcome_on_startup",
     "save_project_rula_config",
     "list_agent_runners",
     // Desktop session
@@ -589,6 +590,7 @@ async fn dispatch(command: &str, args: Value) -> Response {
         "get_global_config" => blocking!(NoArgs, |_a| Ok::<_, ApiCallError>(config::get_global_config())),
         "get_scoped_project_config" => blocking!(ProjectPathArgs, |a| Ok::<_, ApiCallError>(config::get_scoped_project_config(a.project_path))),
         "save_global_config" => blocking!(config::SaveGlobalConfigArgs, |a| config::save_global_config(a.config_toml)),
+        "set_show_welcome_on_startup" => blocking!(config::SetShowWelcomeOnStartupArgs, |a| config::set_show_welcome_on_startup(a)),
         "save_project_rula_config" => blocking!(config::SaveProjectRulaConfigArgs, |a| config::save_project_rula_config(a.project_path, a.config_toml)),
         "list_agent_runners" => blocking!(NoArgs, |_a| config::list_agent_runners()),
 

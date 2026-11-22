@@ -37,7 +37,7 @@ const messages = {
       launch: "launch"
     },
     settings: {
-      global: "Global Settings",
+      global: "Settings",
       project: "Project Settings"
     },
     vcs: {

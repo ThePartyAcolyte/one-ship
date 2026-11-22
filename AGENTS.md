@@ -16,6 +16,7 @@ This document establishes the mandatory governance, anti-pattern gates, and veri
 2. **English Only:** All source code, UI strings, comments, specs, and devlogs MUST be strictly in **English**. Tone must be technical, direct, and objective.
 3. **Strict Git & Shell Edit Ban:**
    - **FORBIDDEN:** Executing ANY `git` command (`checkout`, `restore`, `reset`, `add`, `commit`, `stash`, `clean`, etc.) unless explicitly commanded by the user.
+   - **All-Inclusive Commits (When Explicitly Commanded):** Whenever the user explicitly commands a `commit` or repository update/push, the agent MUST inspect the full working tree (`git status`, `git diff`) and any modified/new `devlog/` entries, stage **all** pending changes across the entire repository (`git add -A`) — never partial commits that leave other agents' changes behind — and write a commit message covering every change included.
    - **FORBIDDEN:** Creating or modifying files via shell (`cat << EOF`, `echo >`, `sed`, `awk`, `python -c`, `>`). Use `write_file` / `edit_file` exclusively.
 4. **Self-Managed Watchers & Build Contention Ban:**
    - **FORBIDDEN:** Starting/stopping daemons, dev servers, or GUI windows (`oneship-daemon`, `vite`, `npm run dev`, `scripts/run_dev.sh all|daemon|gui|stop|rebuild-daemon`).

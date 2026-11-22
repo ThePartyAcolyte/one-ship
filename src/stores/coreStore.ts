@@ -85,6 +85,9 @@ export const useCoreStore = defineStore('core', {
     servicesTelemetry: {} as Record<string, ServiceMetrics>,
     // `Raw` keeps Pinia from unwrapping the recursive `JsonValue` of script options at the type level.
     projects: [] as Raw<ProjectRecord>[],
+    projectsLoaded: false,
+    showWelcomeOnStartup: true,
+    welcomeViewRequested: false,
     agentStates: {} as Record<number, ProjectAgentState>,
     projectInitFlags: {} as Record<number, ProjectInitFlagRecord[]>,
     agentOutcomes: {} as Record<string, { status: string; timestamp: number; summary?: string }>,
@@ -141,6 +144,10 @@ export const useCoreStore = defineStore('core', {
     readinessLoaded(state): boolean {
       return state.diagnostics !== null && state.hostCapabilities !== null;
     },
+    shouldShowWelcomeView(state): boolean {
+      if (!state.projectsLoaded) return false;
+      return state.projects.length === 0 || state.welcomeViewRequested;
+    },
   },
   actions: {
     /** Outcomes are stored per (project, agent); only the project-less system agent uses its bare name. */
@@ -195,11 +202,33 @@ export const useCoreStore = defineStore('core', {
     },
     setProjects(projs: ProjectRecord[]) {
       this.projects = projs;
+      this.projectsLoaded = true;
       // A selection that no longer exists is cleared; the user picks explicitly.
       // No project is ever auto-selected by position in the list.
       if (this.activeProjectId !== null && !this.projects.some(p => p.id === this.activeProjectId)) {
         this.setActiveProject(null, { bypassNavigationGuard: true });
       }
+    },
+    setWelcomeViewRequested(open: boolean) {
+      this.welcomeViewRequested = open;
+    },
+    async syncWelcomePreference(options?: { applyInitialOpen?: boolean }) {
+      const cfg = await daemonCall('get_global_config', {});
+      const sys = (cfg && typeof cfg === 'object' && !Array.isArray(cfg))
+        ? (cfg as Record<string, unknown>).system
+        : undefined;
+      const rawVal = (sys && typeof sys === 'object' && !Array.isArray(sys))
+        ? (sys as Record<string, unknown>).show_welcome_on_startup
+        : undefined;
+      const enabled = typeof rawVal === 'boolean' ? rawVal : true;
+      this.showWelcomeOnStartup = enabled;
+      if (options?.applyInitialOpen) {
+        this.welcomeViewRequested = enabled;
+      }
+    },
+    async setShowWelcomeOnStartup(enabled: boolean) {
+      await daemonCall('set_show_welcome_on_startup', { enabled });
+      this.showWelcomeOnStartup = enabled;
     },
     toggleTerminalKey(projectId: number, key: string) {
       if (!this.selectedTerminalKeys[projectId]) {

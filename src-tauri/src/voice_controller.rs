@@ -529,26 +529,54 @@ async fn handle_voice_socket(local_ws: WebSocket) {
     let resumption_handle = crate::voice_harness::active_resumption_handle(&session).map(str::to_string);
     let active_session_id = Arc::new(Mutex::new(session.id.clone()));
 
+    let (mut local_tx, mut local_rx) = local_ws.split();
+    let mut pending_local_msgs: Vec<AxumWsMessage> = Vec::new();
     let ws_url = format!("{GEMINI_LIVE_WS_BASE}?key={api_key}");
-    let gemini_ws = match open_gemini_live_and_await_setup(
+    let setup_fut = open_gemini_live_and_await_setup(
         &ws_url,
         &cfg,
         &session.id,
         resumption_handle.as_deref(),
         brief.as_deref(),
-    )
-    .await
-    {
-        Ok(ws) => ws,
-        Err(e) => {
-            let msg = e.to_string();
-            crate::logger::log("ERROR", "voice_controller", &msg);
-            mgr.set_state(VoiceControllerState::Error, Some(msg));
-            return;
+    );
+    tokio::pin!(setup_fut);
+
+    let gemini_ws = loop {
+        tokio::select! {
+            res = &mut setup_fut => {
+                match res {
+                    Ok(ws) => break ws,
+                    Err(e) => {
+                        let msg = e.to_string();
+                        crate::logger::log("ERROR", "voice_controller", &msg);
+                        mgr.set_state(VoiceControllerState::Error, Some(msg));
+                        return;
+                    }
+                }
+            }
+            maybe_msg = local_rx.next() => {
+                match maybe_msg {
+                    Some(Ok(AxumWsMessage::Text(txt))) => {
+                        if let Ok(ctrl) = serde_json::from_str::<ClientControlMessage>(&txt) {
+                            if matches!(ctrl.action.as_str(), "ptt_cancel" | "disconnect") {
+                                crate::logger::log("INFO", "voice_controller", "Voice session cancelled during Gemini Live handshake");
+                                mgr.set_state(VoiceControllerState::Idle, None);
+                                return;
+                            }
+                        }
+                        pending_local_msgs.push(AxumWsMessage::Text(txt));
+                    }
+                    Some(Ok(AxumWsMessage::Close(_))) | Some(Err(_)) | None => {
+                        crate::logger::log("INFO", "voice_controller", "Local WebSocket closed during Gemini Live handshake");
+                        mgr.set_state(VoiceControllerState::Idle, None);
+                        return;
+                    }
+                    _ => {}
+                }
+            }
         }
     };
 
-    let (mut local_tx, mut local_rx) = local_ws.split();
     let (mut gemini_tx, mut gemini_rx) = gemini_ws.split();
 
     let (gemini_out_tx, mut gemini_out_rx) =
@@ -600,7 +628,8 @@ async fn handle_voice_socket(local_ws: WebSocket) {
     let setup_ready_for_local = Arc::clone(&setup_ready);
     let setup_notify_for_local = Arc::clone(&setup_notify);
     let activity_for_local = Arc::clone(&last_activity_epoch);
-    let local_reader = tokio::spawn(async move {
+    let mut local_reader = tokio::spawn(async move {
+        let mut local_rx = futures_util::stream::iter(pending_local_msgs.into_iter().map(Ok)).chain(local_rx);
         while let Some(Ok(msg)) = local_rx.next().await {
             match msg {
                 AxumWsMessage::Text(txt) => {
@@ -713,7 +742,7 @@ async fn handle_voice_socket(local_ws: WebSocket) {
         .await;
     }
 
-    let gemini_reader = tokio::spawn(async move {
+    let mut gemini_reader = tokio::spawn(async move {
         while let Some(msg_res) = gemini_rx.next().await {
             let msg = match msg_res {
                 Ok(m) => m,
@@ -1071,7 +1100,7 @@ async fn handle_voice_socket(local_ws: WebSocket) {
 
     let idle_timeout_secs = cfg.idle_disconnect_seconds as i64;
     let activity_for_idle = Arc::clone(&last_activity_epoch);
-    let idle_watcher = tokio::spawn(async move {
+    let mut idle_watcher = tokio::spawn(async move {
         let mut interval = tokio::time::interval(std::time::Duration::from_secs(10));
         loop {
             interval.tick().await;
@@ -1088,19 +1117,53 @@ async fn handle_voice_socket(local_ws: WebSocket) {
         }
     });
 
-    tokio::select! {
-        _ = local_reader => {},
-        _ = gemini_reader => {},
-        _ = idle_watcher => {},
-    }
+    let exited_from_gemini = tokio::select! {
+        _ = &mut local_reader => false,
+        _ = &mut gemini_reader => true,
+        _ = &mut idle_watcher => false,
+    };
+
+    local_reader.abort();
+    gemini_reader.abort();
+    idle_watcher.abort();
 
     flush_turn_accumulator(&turn_acc, &active_session_id, &cfg).await;
     abort_pw_record(&pw_record_handle).await;
     pw_play_sink.lock().await.stop();
     resume_mpris_players(&paused_mpris).await;
-    gemini_writer.abort();
+
+    let mut gemini_writer = gemini_writer;
+    if !exited_from_gemini {
+        let close_frame = tokio_tungstenite::tungstenite::protocol::CloseFrame {
+            code: tokio_tungstenite::tungstenite::protocol::frame::coding::CloseCode::Normal,
+            reason: "Client closed session".into(),
+        };
+        if let Ok(Ok(())) = tokio::time::timeout(
+            std::time::Duration::from_millis(150),
+            gemini_out_tx.send(TungsteniteMessage::Close(Some(close_frame))),
+        )
+        .await
+        {
+            drop(gemini_out_tx);
+            if tokio::time::timeout(
+                std::time::Duration::from_millis(150),
+                &mut gemini_writer,
+            )
+            .await
+            .is_err()
+            {
+                gemini_writer.abort();
+            }
+        } else {
+            gemini_writer.abort();
+        }
+    } else {
+        gemini_writer.abort();
+    }
     local_writer.abort();
-    mgr.set_state(VoiceControllerState::Idle, None);
+    if !(exited_from_gemini && mgr.status().state == VoiceControllerState::Error) {
+        mgr.set_state(VoiceControllerState::Idle, None);
+    }
 }
 
 fn downsample_pcm16(bytes: &[u8], points_count: usize) -> Vec<f32> {

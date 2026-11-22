@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, shallowRef, watch, computed, onMounted, onUnmounted } from 'vue';
-import { Settings, X, Search, RefreshCw, Check, AlertTriangle } from '@lucide/vue';
+import { Settings, X, Search, RefreshCw, Check, AlertTriangle, HelpCircle, SlidersHorizontal } from '@lucide/vue';
 import { AppTooltip, AppSelect, AppInput, AppToggle, QuotaGaugePreviewSelector } from '../ui';
 import type { SelectOption } from '../ui';
 import { useAgentMetricsStore, type QuotaGaugeStyle } from '../../stores/agentMetricsStore';
@@ -37,6 +37,7 @@ const emit = defineEmits<{
 // Replaced as a whole on load; `shallowRef` also skips unwrapping the recursive `JsonValue` defaults.
 const pluginSchemas = shallowRef<PluginConfigSchema[]>([]);
 const searchQuery = ref<string>("");
+const showAdvanced = ref<boolean>(false);
 const activeSettingsTab = ref<string>("");
 // eslint-disable-next-line @typescript-eslint/no-explicit-line
 const settingsValues = ref<Record<string, Record<string, ConfigPrimitive>>>({});
@@ -137,10 +138,13 @@ const filteredPluginSchemas = computed(() => {
       );
 
       if (!query) {
+        const visibleFields = showAdvanced.value
+          ? scopedFields
+          : scopedFields.filter(f => !f.advanced);
         return {
           ...plugin,
-          matchingFields: scopedFields,
-          matchCount: scopedFields.length,
+          matchingFields: visibleFields,
+          matchCount: visibleFields.length,
         };
       }
 
@@ -516,7 +520,7 @@ const pairProblems = computed<string[]>(() => {
         <div class="flex items-center gap-2 shrink-0 min-w-0 text-[var(--dim-color)]">
           <Settings :size="15" class="text-[var(--accent-color)] shrink-0" />
           <h3 class="font-bold uppercase tracking-widest text-xs truncate max-w-[14rem] sm:max-w-[20rem]">
-            {{ scope === 'project' ? `Project Settings: ${project?.name}` : 'Global Settings' }}
+            {{ scope === 'project' ? `Project Settings: ${project?.name}` : 'Settings' }}
           </h3>
           <span 
             class="text-[9px] px-2 py-0.5 border uppercase font-mono shrink-0"
@@ -547,6 +551,19 @@ const pairProblems = computed<string[]>(() => {
           >
             <X :size="13" />
           </button>
+          <AppTooltip text="Show advanced internal tuning and timeout parameters" position="bottom">
+            <button
+              type="button"
+              @click="showAdvanced = !showAdvanced"
+              class="h-6 px-2 text-[9px] font-mono font-bold uppercase tracking-wider border transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
+              :class="showAdvanced
+                ? 'border-[var(--accent-color)] text-[var(--accent-color)] bg-[var(--accent-color)]/10'
+                : 'border-[var(--border-color)] text-[var(--dim-color)] hover:text-[var(--fg-color)]'"
+            >
+              <SlidersHorizontal :size="11" />
+              <span>Advanced</span>
+            </button>
+          </AppTooltip>
           <kbd class="ui-kbd">ESC</kbd>
           <AppTooltip text="Close" position="left">
             <button 
@@ -695,33 +712,37 @@ const pairProblems = computed<string[]>(() => {
                 class="flex flex-col gap-2 p-3 border border-[var(--border-color)] ui-surface-card"
               >
                 <!-- Label & Metadata -->
-                <div class="flex justify-between items-center">
-                  <div class="flex items-center gap-2">
-                    <span class="font-bold text-[var(--fg-color)] text-[11px]">{{ field.label }}</span>
-                    <span 
-                      v-if="scope === 'project'" 
-                      class="text-[9px] px-1.5 py-0.2 border uppercase font-mono"
-                      :class="settingsProvenance[`${plugin.plugin_id}.${field.key}`] === 'project'
-                        ? 'border-[var(--accent-color)] text-[var(--accent-color)] bg-[var(--accent-color)]/10'
-                        : (settingsProvenance[`${plugin.plugin_id}.${field.key}`] === 'global' ? 'border-[var(--status-info-border)] text-[var(--status-info-color)]' : 'border-[var(--border-color)] text-[var(--dim-color)]')"
-                    >
-                      [{{ settingsProvenance[`${plugin.plugin_id}.${field.key}`] || 'default' }}]
-                    </span>
-                  </div>
-                  <div class="flex items-center gap-2 text-[9px]">
-                    <span class="px-1.5 py-0.5 border border-[var(--border-color)] text-[var(--dim-color)] uppercase">
-                      {{ field.scope }}
-                    </span>
-                    <span class="text-[var(--dim-color)] font-mono">
+                <div class="flex justify-between items-start gap-2">
+                  <div class="flex flex-col gap-0.5 min-w-0">
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                      <span class="font-bold text-[var(--fg-color)] text-[11px]">{{ field.label }}</span>
+                      <AppTooltip :text="field.description" position="top">
+                        <HelpCircle :size="12" class="text-[var(--dim-color)] hover:text-[var(--accent-color)] cursor-help shrink-0" />
+                      </AppTooltip>
+                      <span
+                        v-if="field.advanced"
+                        class="text-[8px] px-1 py-0.2 border border-[var(--border-color)] text-[var(--dim-color)] uppercase font-mono"
+                      >
+                        ADV
+                      </span>
+                      <span 
+                        v-if="scope === 'project'" 
+                        class="text-[9px] px-1.5 py-0.2 border uppercase font-mono"
+                        :class="settingsProvenance[`${plugin.plugin_id}.${field.key}`] === 'project'
+                          ? 'border-[var(--accent-color)] text-[var(--accent-color)] bg-[var(--accent-color)]/10'
+                          : (settingsProvenance[`${plugin.plugin_id}.${field.key}`] === 'global' ? 'border-[var(--status-info-border)] text-[var(--status-info-color)]' : 'border-[var(--border-color)] text-[var(--dim-color)]')"
+                      >
+                        [{{ settingsProvenance[`${plugin.plugin_id}.${field.key}`] || 'default' }}]
+                      </span>
+                    </div>
+                    <span class="text-[9px] text-[var(--dim-color)]/70 font-mono truncate">
                       {{ field.key }}
                     </span>
                   </div>
+                  <span class="px-1.5 py-0.5 border border-[var(--border-color)] text-[var(--dim-color)] uppercase text-[9px] shrink-0">
+                    {{ field.scope }}
+                  </span>
                 </div>
-
-                <!-- Description -->
-                <p class="text-[10px] text-[var(--dim-color)] leading-relaxed">
-                  {{ field.description }}
-                </p>
 
                 <!-- Dynamic Input Controls -->
                 <div class="mt-1">
@@ -870,7 +891,7 @@ const pairProblems = computed<string[]>(() => {
             class="h-6 px-2.5 text-[9px] font-bold uppercase tracking-wider border border-[var(--accent-color)] text-[var(--accent-color)] hover:bg-[var(--accent-color)] hover:text-black transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <span v-if="isSavingSettings" class="animate-pulse">Saving...</span>
-            <span v-else>{{ scope === 'project' ? 'Save to rula.toml' : 'Save Global Settings' }}</span>
+            <span v-else>{{ scope === 'project' ? 'Save to rula.toml' : 'Save Settings' }}</span>
           </button>
         </div>
       </div>

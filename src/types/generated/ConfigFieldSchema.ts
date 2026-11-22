@@ -33,4 +33,8 @@ description: string,
 /**
  * Resolution scope: "global_only", "project_only", or "cascade" (project overrides global).
  */
-scope: string, };
+scope: string, 
+/**
+ * When true, hidden behind the "Show Advanced" toggle by default.
+ */
+advanced: boolean, };

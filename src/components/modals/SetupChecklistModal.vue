@@ -208,12 +208,12 @@ onUnmounted(() => {
 <template>
   <div
     v-if="show"
-    class="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-color)]/80 p-4 font-mono"
+    class="fixed inset-0 z-50 flex items-center justify-center ui-overlay-backdrop p-4 font-mono"
     @click.self="emit('close')"
   >
-    <div class="w-full max-w-3xl max-h-[88vh] flex flex-col border border-[var(--border-color)] ui-surface-modal shadow-2xl overflow-hidden">
+    <div class="w-full max-w-3xl max-h-[88vh] flex flex-col border border-[var(--border-color)] ui-surface-base shadow-2xl overflow-hidden">
       <!-- Header -->
-      <div class="px-4 py-3 border-b border-[var(--border-color)] ui-surface-card flex items-center justify-between gap-3 shrink-0">
+      <div class="px-4 py-3 border-b border-[var(--border-color)] ui-surface-title flex items-center justify-between gap-3 shrink-0">
         <div class="flex flex-col gap-0.5">
           <h2 class="text-xs font-bold uppercase tracking-wider text-[var(--fg-color)]">
             ONE-SHIP Workstation Setup &amp; Readiness
@@ -234,9 +234,11 @@ onUnmounted(() => {
               <RefreshCw :size="12" :class="isRefreshingRunners ? 'animate-spin' : ''" />
             </button>
           </AppTooltip>
-          <button type="button" @click="emit('close')" class="ui-icon-btn" aria-label="Close setup checklist">
-            <X :size="13" />
-          </button>
+          <AppTooltip text="Close">
+            <button type="button" @click="emit('close')" class="ui-icon-btn" aria-label="Close setup checklist">
+              <X :size="13" />
+            </button>
+          </AppTooltip>
         </div>
       </div>
 
@@ -270,12 +272,12 @@ onUnmounted(() => {
           </p>
           <div class="flex items-center gap-2">
             <div class="flex-1">
-              <AppInput v-model="projectsRootInput" placeholder="/home/user/Projects" />
+              <AppInput v-model="projectsRootInput" placeholder="~/Projects" />
             </div>
             <button
               type="button"
               @click="browseProjectsRoot"
-              class="px-2.5 py-1.5 border border-[var(--border-color)] hover:border-[var(--accent-color)] text-[10px] font-bold uppercase cursor-pointer"
+              class="h-8 px-3 border border-[var(--border-color)] hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] text-[var(--dim-color)] text-[9px] font-bold uppercase cursor-pointer transition-colors"
             >
               Browse
             </button>
@@ -283,7 +285,7 @@ onUnmounted(() => {
               type="button"
               @click="saveProjectsRoot"
               :disabled="isSavingRoot || !projectsRootInput.trim()"
-              class="px-3 py-1.5 bg-[var(--accent-color)] text-[var(--bg-color)] text-[10px] font-bold uppercase cursor-pointer disabled:opacity-40 flex items-center gap-1"
+              class="h-8 px-3 border border-[var(--accent-color)] bg-[var(--accent-color)]/15 hover:bg-[var(--accent-color)]/25 text-[var(--accent-color)] text-[9px] font-bold uppercase cursor-pointer disabled:opacity-40 flex items-center gap-1 transition-colors"
             >
               <Loader2 v-if="isSavingRoot" :size="11" class="animate-spin" />
               <span>Create &amp; Save</span>
@@ -335,7 +337,7 @@ onUnmounted(() => {
                 type="button"
                 @click="emit('installTools', ['gh'])"
                 :disabled="isInstallingTools"
-                class="px-2 py-0.5 border border-[var(--border-color)] hover:border-[var(--accent-color)] text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer disabled:opacity-40"
+                class="h-6 px-2 border border-[var(--border-color)] hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] text-[var(--dim-color)] text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer disabled:opacity-40 transition-colors"
               >
                 <Download :size="10" />
                 <span>Install gh</span>
@@ -345,7 +347,7 @@ onUnmounted(() => {
                 type="button"
                 @click="launchTerminalAction('gh_auth_login')"
                 :disabled="launchingAction !== null"
-                class="px-2 py-0.5 border border-[var(--border-color)] hover:border-[var(--accent-color)] text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer disabled:opacity-40"
+                class="h-6 px-2 border border-[var(--border-color)] hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] text-[var(--dim-color)] text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer disabled:opacity-40 transition-colors"
               >
                 <Terminal :size="10" />
                 <span>Auth in Terminal</span>
@@ -355,7 +357,7 @@ onUnmounted(() => {
               type="button"
               @click="saveGitIdentity"
               :disabled="isSavingGitIdentity || !diagnostics?.git_installed || !gitNameInput.trim() || !gitEmailInput.trim()"
-              class="px-3 py-1.5 border border-[var(--border-color)] hover:border-[var(--accent-color)] text-[10px] font-bold uppercase cursor-pointer disabled:opacity-40"
+              class="h-7 px-3 border border-[var(--border-color)] hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] text-[var(--dim-color)] text-[9px] font-bold uppercase cursor-pointer disabled:opacity-40 transition-colors"
             >
               Save Git Identity
             </button>
@@ -399,7 +401,7 @@ onUnmounted(() => {
                 type="button"
                 @click="launchTerminalAction(r.installAction)"
                 :disabled="launchingAction !== null"
-                class="px-2 py-0.5 border border-[var(--border-color)] hover:border-[var(--accent-color)] text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer shrink-0 disabled:opacity-40"
+                class="h-6 px-2 border border-[var(--border-color)] hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] text-[var(--dim-color)] text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer shrink-0 disabled:opacity-40 transition-colors"
               >
                 <Terminal :size="10" />
                 <span>Install in Terminal</span>
@@ -418,7 +420,7 @@ onUnmounted(() => {
             <button
               type="button"
               @click="emit('openIntegrations')"
-              class="px-2 py-1 border border-[var(--border-color)] hover:border-[var(--accent-color)] text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer"
+              class="h-6 px-2 border border-[var(--border-color)] hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] text-[var(--dim-color)] text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer transition-colors"
             >
               <Settings :size="10" />
               <span>Integrations Settings</span>
@@ -441,7 +443,7 @@ onUnmounted(() => {
                     type="button"
                     @click="launchTerminalAction(INTEGRATION_INSTALL_GUIDES[item.plugin_id].installAction!)"
                     :disabled="launchingAction !== null"
-                    class="px-2 py-0.5 border border-[var(--border-color)] hover:border-[var(--accent-color)] text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer disabled:opacity-40"
+                    class="h-6 px-2 border border-[var(--border-color)] hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] text-[var(--dim-color)] text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer disabled:opacity-40 transition-colors"
                   >
                     <Terminal :size="10" />
                     <span>Install in Terminal</span>
@@ -450,7 +452,7 @@ onUnmounted(() => {
                     v-else-if="!item.available && INTEGRATION_INSTALL_GUIDES[item.plugin_id]?.downloadUrl"
                     type="button"
                     @click="openSolidcraftDownload"
-                    class="px-2 py-0.5 border border-[var(--border-color)] hover:border-[var(--accent-color)] text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer"
+                    class="h-6 px-2 border border-[var(--border-color)] hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] text-[var(--dim-color)] text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer transition-colors"
                   >
                     <ExternalLink :size="10" />
                     <span>Download</span>
@@ -481,7 +483,7 @@ onUnmounted(() => {
       </div>
 
       <!-- Footer -->
-      <div class="px-4 py-3 border-t border-[var(--border-color)] ui-surface-card flex items-center justify-between gap-3 shrink-0">
+      <div class="px-4 py-2.5 border-t border-[var(--border-color)] ui-surface-title flex items-center justify-between gap-3 shrink-0">
         <label class="flex items-center gap-2 text-[10px] text-[var(--dim-color)] cursor-pointer select-none">
           <input
             type="checkbox"
@@ -494,7 +496,7 @@ onUnmounted(() => {
         <button
           type="button"
           @click="emit('close')"
-          class="px-4 py-1.5 bg-[var(--accent-color)] text-[var(--bg-color)] text-xs font-bold uppercase cursor-pointer hover:opacity-90"
+          class="h-7 px-3 bg-[var(--accent-color)] text-[var(--bg-color)] text-[9px] font-bold uppercase cursor-pointer hover:opacity-90 transition-colors"
         >
           Done
         </button>

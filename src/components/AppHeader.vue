@@ -17,6 +17,7 @@ import {
   Square,
   Copy,
   X,
+  Home,
 } from '@lucide/vue';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import type { DiagnosticState } from '../types';
@@ -30,7 +31,6 @@ import {
 import { daemonCall } from '../utils/daemonClient';
 import { reportAsyncFailure } from '../utils/reportAsyncFailure';
 import AppTooltip from './ui/AppTooltip.vue';
-import AppToggle from './ui/AppToggle.vue';
 import TelemetryCharts from './telemetry/TelemetryCharts.vue';
 
 const props = defineProps<{
@@ -48,6 +48,7 @@ const emit = defineEmits<{
   (e: 'openSetup'): void;
   (e: 'openLogs'): void;
   (e: 'openAbout'): void;
+  (e: 'openWelcome'): void;
   (e: 'openOmnisearch', initialQuery?: string): void;
 }>();
 
@@ -123,9 +124,10 @@ function closeAppMenu() {
   isAppMenuOpen.value = false;
 }
 
-function handleMenuAction(action: 'logs' | 'settings' | 'setup' | 'about') {
+function handleMenuAction(action: 'welcome' | 'logs' | 'settings' | 'setup' | 'about') {
   closeAppMenu();
-  if (action === 'logs') emit('openLogs');
+  if (action === 'welcome') emit('openWelcome');
+  else if (action === 'logs') emit('openLogs');
   else if (action === 'settings') emit('openSettings');
   else if (action === 'setup') emit('openSetup');
   else if (action === 'about') emit('openAbout');
@@ -142,6 +144,14 @@ async function toggleGlobalVoiceController(nextEnabled: boolean) {
   } finally {
     isTogglingVoice.value = false;
   }
+}
+
+async function handleVoicePillClick() {
+  if (isVoiceExpanded.value) {
+    await voiceController.refreshStatus();
+    return;
+  }
+  await toggleGlobalVoiceController(!voiceController.enabled);
 }
 
 async function toggleDictationAutoSend() {
@@ -203,7 +213,7 @@ const voiceTooltip = computed(() => {
     if (dictation.state === 'processing') return 'Finalizing dictation...';
     return 'Dictating into the focused field (Alt+V to stop, Alt+Backspace to cancel)';
   }
-  if (!voiceController.enabled) return 'Global Voice Controller Disabled';
+  if (!voiceController.enabled) return 'Voice Controller: OFF (click to enable)';
   if (!voiceController.configured) return 'Voice Controller: Set Google AI Studio API Key in Settings';
   if (voiceController.lastError && voiceController.controllerState === 'error') {
     return `Voice Controller Error: ${voiceController.lastError}`;
@@ -218,7 +228,7 @@ const voiceTooltip = computed(() => {
     case 'speaking':
       return 'Speaking (Alt+V to interrupt)';
     default:
-      return 'Alt+V: dictate in a text field, or talk to the Ship Brain outside one';
+      return 'Voice Controller: ON (click to disable · Alt+V to talk/dictate)';
   }
 });
 
@@ -316,8 +326,8 @@ watch(
 );
 
 const voiceBtnClass = computed(() => {
-  if (!voiceController.configured || !voiceController.enabled) {
-    return 'border-[var(--border-color)] text-[var(--dim-color)] opacity-50 hover:opacity-100 bg-[var(--bg-color)]';
+  if (!voiceController.enabled || !voiceController.configured) {
+    return 'border-[var(--border-color)] text-[var(--dim-color)] hover:text-[var(--fg-color)] hover:border-[var(--accent-color)]';
   }
   switch (voiceController.controllerState) {
     case 'listening':
@@ -330,7 +340,7 @@ const voiceBtnClass = computed(() => {
     case 'error':
       return 'border-[var(--status-error-border)] text-[var(--status-error-color)] bg-[var(--status-error-bg)]';
     default:
-      return 'border-[var(--border-color)] text-[var(--dim-color)] hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] bg-[var(--bg-color)]';
+      return 'border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] text-[var(--status-ok-color)]';
   }
 });
 
@@ -399,12 +409,13 @@ const daemonError = computed(() => {
         </button>
       </AppTooltip>
 
-      <!-- Global Voice Controller Status & Oscilloscope Waveform Pill (Spec 36, Alt+V) -->
+      <!-- Global Voice Controller Toggle & Oscilloscope Waveform Pill (Spec 36, Alt+V) -->
       <AppTooltip :text="voiceTooltip">
         <button 
           type="button"
-          @click="voiceController.refreshStatus()"
-          class="h-6 border transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer shrink-0 select-none overflow-hidden"
+          :disabled="isTogglingVoice"
+          @click="handleVoicePillClick"
+          class="h-6 border transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer shrink-0 select-none overflow-hidden disabled:opacity-50"
           :class="[voiceBtnClass, isVoiceExpanded ? 'w-36 px-1.5' : 'w-6']"
         >
           <AudioLines :size="13" class="shrink-0" />
@@ -476,21 +487,17 @@ const daemonError = computed(() => {
             </AppTooltip>
           </div>
 
-          <!-- Quick Toggle: Global Voice Controller -->
-          <div class="px-3 py-2 border-b border-[var(--border-color)]/60 flex items-center justify-between gap-2">
-            <div class="flex items-center gap-2 text-[var(--fg-color)]">
-              <Mic :size="12" class="text-[var(--accent-color)] shrink-0" />
-              <span>Voice Controller</span>
-            </div>
-            <AppToggle
-              :model-value="voiceController.enabled"
-              :disabled="isTogglingVoice"
-              @update:model-value="toggleGlobalVoiceController"
-            />
-          </div>
-
           <!-- Navigation Items -->
           <div class="py-1 flex flex-col">
+            <button
+              type="button"
+              @click="handleMenuAction('welcome')"
+              class="w-full px-3 py-2 flex items-center gap-2.5 text-left text-[var(--fg-color)] hover:bg-[var(--accent-color)]/10 hover:text-[var(--accent-color)] transition-colors cursor-pointer"
+            >
+              <Home :size="12" class="text-[var(--accent-color)] shrink-0" />
+              <span>Welcome Screen</span>
+            </button>
+
             <button
               type="button"
               @click="handleMenuAction('logs')"

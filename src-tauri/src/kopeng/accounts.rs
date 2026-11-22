@@ -1,11 +1,9 @@
-use std::io::Write;
-use std::process::{Command, Stdio};
+use std::process::Command;
 use std::sync::OnceLock;
 use aes_gcm::{
     aead::{Aead, KeyInit},
     Aes256Gcm, Key, Nonce,
 };
-use base64::Engine as _;
 use hkdf::Hkdf;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
@@ -216,22 +214,28 @@ pub fn decrypt_refresh_token_with_key(encrypted_data: &[u8], key_bytes: &[u8; 32
         .ok_or_else(|| AccountsError::InvalidPayload("decrypted token has no refresh_token/api_key".to_string()))
 }
 
-/// Decodes the unverified payload portion of an RS256 ID token JWT to extract the `email` claim.
-pub fn extract_email_from_id_token(id_token: &str) -> Option<String> {
-    let parts: Vec<&str> = id_token.splitn(3, '.').collect();
-    let payload_b64 = parts.get(1)?;
+/// Builds the canonical keyring JSON payload expected by `agy` and ONE-SHIP account sync.
+pub fn build_keyring_payload(refresh_token: &str, email: &str) -> Value {
+    serde_json::json!({
+        "token": {
+            "access_token": "",
+            "token_type": "Bearer",
+            "refresh_token": refresh_token,
+            "expiry": "2000-01-01T00:00:00Z"
+        },
+        "auth_method": "consumer",
+        "id_token_email": email
+    })
+}
 
-    let decoded = base64::engine::general_purpose::URL_SAFE_NO_PAD
-        .decode(payload_b64)
-        .or_else(|_| {
-            let padding = (4 - payload_b64.len() % 4) % 4;
-            let padded = format!("{}{}", payload_b64, "=".repeat(padding));
-            base64::engine::general_purpose::URL_SAFE.decode(padded)
-        })
-        .ok()?;
-
-    let json: Value = serde_json::from_slice(&decoded).ok()?;
-    json.get("email")?.as_str().map(String::from)
+/// Extracts the non-empty `id_token_email` claim from a keyring JSON payload.
+pub fn extract_email_from_keyring_token(token_val: &Value) -> Option<String> {
+    token_val
+        .get("id_token_email")
+        .and_then(|e| e.as_str())
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(String::from)
 }
 
 /// Registers or updates an account in the local SQLite database.
@@ -430,16 +434,7 @@ pub fn ensure_active_account_in_keyring() -> Result<(), AccountsError> {
     };
 
     let current_keyring = read_keyring_token()?;
-    let current_email = current_keyring.as_ref().and_then(|t| {
-        t.get("_account_email")
-            .and_then(|e| e.as_str())
-            .map(String::from)
-            .or_else(|| {
-                t.get("id_token")
-                    .and_then(|i| i.as_str())
-                    .and_then(extract_email_from_id_token)
-            })
-    });
+    let current_email = current_keyring.as_ref().and_then(extract_email_from_keyring_token);
 
     if let Some(ref email) = current_email {
         if email == &active.email {
@@ -456,17 +451,7 @@ pub fn ensure_active_account_in_keyring() -> Result<(), AccountsError> {
     }
 
     let refresh_token = decrypt_refresh_token(&active.enc_token)?;
-    let payload = serde_json::json!({
-        "token": {
-            "access_token": "",
-            "token_type": "Bearer",
-            "refresh_token": refresh_token,
-            "expiry": "2000-01-01T00:00:00Z"
-        },
-        "auth_method": "consumer",
-        "id_token": "",
-        "_account_email": active.email
-    });
+    let payload = build_keyring_payload(&refresh_token, &active.email);
 
     write_keyring_token(&payload)?;
     crate::logger::log("INFO", "accounts", &format!("Synchronized active account '{}' to OS keyring", active.email));
@@ -488,23 +473,7 @@ pub fn check_and_register_keyring_account() -> Result<Option<(AccountSummary, bo
             None => return Ok(None),
         };
 
-    // Prefer the synthetic _account_email field written by switch_account for identity continuity.
-    // Fall back to JWT extraction from the real id_token for authentic OAuth sessions.
-    let email = token_val
-        .get("_account_email")
-        .and_then(|e| e.as_str())
-        .filter(|s| !s.is_empty())
-        .map(String::from)
-        .or_else(|| {
-            token_val
-                .get("id_token")
-                .and_then(|i| i.as_str())
-                .and_then(extract_email_from_id_token)
-        });
-
-    // If email cannot be resolved, bail out. Creating a phantom "unknown@antigravity" account
-    // would incorrectly override is_active and corrupt the DB state post-switch.
-    let email = match email {
+    let email = match extract_email_from_keyring_token(&token_val) {
         Some(e) => e,
         None => return Ok(None),
     };
@@ -639,17 +608,7 @@ pub async fn switch_account(target_account_id: &str, relaunch_active: bool) -> R
             let enc = target_record.enc_token.clone();
             tokio::task::spawn_blocking(move || -> Result<(), AccountsError> {
                 let refresh_token = decrypt_refresh_token(&enc)?;
-                let payload = serde_json::json!({
-                    "token": {
-                        "access_token": "",
-                        "token_type": "Bearer",
-                        "refresh_token": refresh_token,
-                        "expiry": "2000-01-01T00:00:00Z"
-                    },
-                    "auth_method": "consumer",
-                    "id_token": "",
-                    "_account_email": email
-                });
+                let payload = build_keyring_payload(&refresh_token, &email);
                 write_keyring_token(&payload)?;
                 db_set_active_account(&acc_id)?;
                 Ok(())
@@ -1204,12 +1163,15 @@ mod tests {
     }
 
     #[test]
-    fn test_jwt_email_extraction() {
-        let fake_jwt = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiZW1haWwiOiJkZXZlbG9wZXJAZXhhbXBsZS5jb20iLCJpYXQiOjE1MTYyMzkwMjJ9.signature";
-        let email = extract_email_from_id_token(fake_jwt);
-        assert_eq!(email, Some("developer@example.com".to_string()));
+    fn test_keyring_email_extraction() {
+        let payload = build_keyring_payload("1//04_refresh", "developer@example.com");
+        assert_eq!(
+            extract_email_from_keyring_token(&payload),
+            Some("developer@example.com".to_string())
+        );
 
-        assert_eq!(extract_email_from_id_token("invalid.token"), None);
+        let empty = serde_json::json!({ "id_token_email": "  " });
+        assert_eq!(extract_email_from_keyring_token(&empty), None);
     }
 
     #[test]
